@@ -3580,6 +3580,11 @@ function sendModal(m: Rec, wrap: (...a: any[]) => string, cancel: string) {
     btn('Not yet', { k: 'sec', a: 'data-act="sendBack"' }) + btn('Copy message', { k: 'ghost', a: 'data-act="sendCopy"' }) + btn('Open again', { k: 'ghost', i: 'chat', a: 'data-act="sendOpen"' }) + btn('Yes, I sent it', { i: 'check', a: 'data-act="sendDone"' }), 560);
   }
   const hidden = !canA('seeNumbers') || t.num.includes('•');
+  // Email needs: the server set up, a saved email address on a prospect, and permission to see contact details.
+  const mailWhy = S.mailOk === false ? 'Email is not set up yet (the admin adds the Brevo settings).' : t.isLead ? 'Convert this lead to a prospect with an email address to email them.' : !t.email ? t.name + ' has no email address saved.' : !canA('seeNumbers') ? 'Your role cannot see contact details.' : '';
+  const canMail = S.mailOk !== false && !mailWhy; const em = D.ch === 'email' && canMail;
+  const subjDefault = picked.length + (picked.length === 1 ? ' home' : ' homes') + ' that match what you asked for';
+  const introDefault = 'Based on what you told us (' + [reqSpec(r), r.locs.join(', '), sendBudget(r)].filter(Boolean).join(', ') + '), these are the best matches right now.';
   const props = ids.map((id) => { const p: Rec = propById(id); const ms = matchesFor(r).find((x) => x.p.id === id); if (!p) return ''; return chk(D.sel[id] !== false, `<b>${esc(p.title)}</b> <span class="sub">· ${esc(p.loc)} · ${fmtPrice(p)}</span>${ms ? ' ' + badge(ms.score + '%', 'ok') : ''}`, `data-act="sendPropTog" data-id="${id}"`); }).join('');
   const docs = ids.flatMap((pid) => filesOf('prop:' + pid).filter((f: Rec) => f.share).map((f: Rec) => ({ pid, f })));
   return wrap('Send to client', `
@@ -3588,11 +3593,11 @@ function sendModal(m: Rec, wrap: (...a: any[]) => string, cancel: string) {
     ${t.notWa ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>${esc(t.name)}’s number is flagged as <b>not on WhatsApp</b>. Update the number or send by email.</div></div>` : ''}
     ${hidden ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>The number is hidden for your role. Reveal it from the client’s page or ask an admin before sending.</div></div>` : ''}
     <div class="fld"><span class="l">Properties to send (${picked.length} of ${ids.length})</span><div class="card" style="background:var(--bg);gap:2px">${props}</div></div>
-    <div class="fld"><span class="l">Send by</span><div class="chips">${chip('WhatsApp', true, 'data-act="noop"')}${chip('Email · coming next', false, 'data-act="toast" data-t="Email sending is added after the email template is approved"')}</div></div>
-    ${fld('Message', 'd.send.msg', { rows: 11, hint: edited ? 'You edited the text. <a href="#" data-act="sendReset" style="color:var(--p);font-weight:600">Reset to the automatic text</a>' : 'Built from the client’s requirement. You can edit it.' })}
-    ${docs.length ? `<div class="card" style="background:var(--bg);gap:2px"><b>Documents to send afterwards</b><div class="sub" style="font-size:12px;margin-bottom:4px">WhatsApp links can’t attach files, so add these in the chat after it opens. Only files marked Shareable are listed.</div>${docs.map((x) => chk(S.d.shareSel[x.f.id] !== false, esc(x.f.name) + ' <span class="sub">· ' + x.pid + '</span>', `data-act="shareDocTog" data-id="${x.f.id}"`)).join('')}</div>` : ''}
-    ${IS_MOBILE_UA ? '' : `<div class="fld"><span class="l">Open with</span>${chipSet('d.send.via', [['app', 'WhatsApp app'], ['web', 'WhatsApp Web'], ['copy', 'Copy message only']], D.via)}<small>The app opens if WhatsApp Desktop is installed; WhatsApp Web asks for a QR scan the first time.</small></div>`}`,
-  cancel + btn(D.via === 'copy' && !IS_MOBILE_UA ? 'Copy message' : 'Send on WhatsApp', { i: 'chat', a: 'data-act="sendGo"' + (!picked.length || t.notWa ? ' disabled' : '') }), 640);
+    <div class="fld"><span class="l">Send by</span><div class="chips">${chip('WhatsApp', !em, 'data-act="setf" data-p="d.send.ch" data-v="wa"')}${chip('Email', em, canMail ? 'data-act="setf" data-p="d.send.ch" data-v="email"' : `data-act="toast" data-t="${esc(mailWhy)}"`)}</div>${!canMail ? `<small>${esc(mailWhy)}</small>` : ''}</div>
+    ${em ? `${fld('Subject', 'd.send.subject', { ph: subjDefault })}${fld('Opening paragraph', 'd.send.intro', { rows: 3, ph: introDefault, hint: 'Leave empty to use the standard text. The email lists the ticked properties with price, size and match %, a Book-a-visit button and your contact details.' })}<div class="sub" style="font-size:12px">Goes to ${esc(t.email)}. Replies come to ${esc(S.me)}.</div>` : fld('Message', 'd.send.msg', { rows: 11, hint: edited ? 'You edited the text. <a href="#" data-act="sendReset" style="color:var(--p);font-weight:600">Reset to the automatic text</a>' : 'Built from the client’s requirement. You can edit it.' })}
+    ${docs.length && !em ? `<div class="card" style="background:var(--bg);gap:2px"><b>Documents to send afterwards</b><div class="sub" style="font-size:12px;margin-bottom:4px">WhatsApp links can’t attach files, so add these in the chat after it opens. Only files marked Shareable are listed.</div>${docs.map((x) => chk(S.d.shareSel[x.f.id] !== false, esc(x.f.name) + ' <span class="sub">· ' + x.pid + '</span>', `data-act="shareDocTog" data-id="${x.f.id}"`)).join('')}</div>` : ''}
+    ${IS_MOBILE_UA || em ? '' : `<div class="fld"><span class="l">Open with</span>${chipSet('d.send.via', [['app', 'WhatsApp app'], ['web', 'WhatsApp Web'], ['copy', 'Copy message only']], D.via)}<small>The app opens if WhatsApp Desktop is installed; WhatsApp Web asks for a QR scan the first time.</small></div>`}`,
+  cancel + (em ? btn(S.mailBusy ? 'Sending…' : 'Send email', { i: 'mail', a: 'data-act="sendMail"' + (!picked.length || S.mailBusy ? ' disabled' : '') }) : btn(D.via === 'copy' && !IS_MOBILE_UA ? 'Copy message' : 'Send on WhatsApp', { i: 'chat', a: 'data-act="sendGo"' + (!picked.length || t.notWa ? ' disabled' : '') })), 640);
 }
 // Chain the new dialog in front of the existing ones.
 const _modalExtraSend = modalExtra;
@@ -3610,7 +3615,9 @@ Object.assign(ACTS, {
   shareSel() {
     const a: string[] = S.tab.matchSel || []; if (!a.length) { toast('Tick one or more properties first.'); return; }
     const r = pendingReqs().find((x) => x.id === S.tab.matchReq); if (!r) { toast('Choose a requirement first.'); return; }
-    S.d.send = { sel: {}, via: 'app', msg: '', lastAuto: '' }; S.modal = { t: 'send', ids: a.join(','), req: r.id, step: 'compose' }; render();
+    S.d.send = { sel: {}, via: 'app', ch: 'wa', msg: '', lastAuto: '', subject: '', intro: '' }; S.modal = { t: 'send', ids: a.join(','), req: r.id, step: 'compose' }; render();
+    // Ask the server once whether email is set up, so the Email option can be enabled or explained.
+    if (S.mailOk === undefined && ADAPTER.api) ADAPTER.api('/mail/status').then((x: Rec) => { S.mailOk = !!(x && x.configured); render(); }).catch(() => { S.mailOk = false; render(); });
   },
   // Tick / untick one property in the Send dialog.
   sendPropTog(el: Rec) { const id = el.dataset.id; S.d.send.sel[id] = S.d.send.sel[id] === false; render(); },
@@ -3638,6 +3645,19 @@ Object.assign(ACTS, {
   sendBack() { S.modal = Object.assign({}, S.modal, { step: 'compose' }); render(); },
   // Copy the text again.
   sendCopy() { copyText(S.d.send.msg); toast('Message copied'); },
+  // Send the matches email through the server, then log it like a WhatsApp send.
+  async sendMail() {
+    const m = S.modal; const r = pendingReqs().find((x) => x.id === m.req); const t = r && sendTarget(r); if (!r || !t || t.isLead || S.mailBusy || !ADAPTER.api) return;
+    const ids = sendPicked(m); if (!ids.length) { toast('Tick at least one property.'); return; }
+    const sc: Rec = {}; matchesFor(r).forEach((x) => { sc[x.p.id] = x.score; });
+    S.mailBusy = true; render();
+    try {
+      await ADAPTER.api('/mail/matches', { method: 'POST', body: { prospectId: t.p.id, propertyIds: ids, subject: S.d.send.subject, intro: S.d.send.intro, reqSummary: [reqSpec(r), r.locs.join(', '), sendBudget(r)].filter(Boolean).join(', '), scores: sc } });
+      const note = 'Emailed ' + ids.length + ' matched propert' + (ids.length === 1 ? 'y' : 'ies') + ' (' + ids.join(', ') + ') for ' + r.id;
+      S.fus.unshift({ id: 'f' + Date.now(), who: t.name, kind: 'Email', note, due: '', when: dateTxt(iso(today)), done: true, p: r.purpose });
+      S.mailBusy = false; S.tab.matchSel = []; S.modal = null; toast('Email sent to ' + t.name); render();
+    } catch (e: any) { S.mailBusy = false; render(); toast((e && e.message) || 'The email could not be sent.'); }
+  },
   // The broker confirmed they pressed Send: log it on the client's timeline.
   sendDone() {
     const m = S.modal; const r = pendingReqs().find((x) => x.id === m.req); const t = r && sendTarget(r); if (!r || !t) return;
