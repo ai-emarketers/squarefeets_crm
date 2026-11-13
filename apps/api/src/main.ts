@@ -15,8 +15,10 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: false, transform: true }));
   // Records (deals with offers, documents metadata …) can be large JSON bodies.
   app.useBodyParser('json', { limit: '25mb' });
-  const port = Number(process.env.API_PORT || 4000);
-  await app.listen(port);
+  // Hosting platforms (Railway, Render, Heroku …) tell the app its port through PORT; locally API_PORT / 4000 is used.
+  const port = Number(process.env.PORT || process.env.API_PORT || 4000);
+  // API_HOST: '0.0.0.0' by default; Railway's private network needs '::' (set in apps/api/railway.json).
+  await app.listen(port, process.env.API_HOST || '0.0.0.0');
   console.log(`SquareFeets CRM API running on http://localhost:${port}/api`);
 }
 bootstrap();
