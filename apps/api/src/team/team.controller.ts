@@ -11,33 +11,40 @@ import { AuthUser, CurrentUser, Perm } from '../auth/auth.decorators';
 import { MemberUpdateDto, SetPasswordDto, StatusDto, TeamMemberDto } from './team.dto';
 import { TeamService } from './team.service';
 
+// Team endpoints under /api/team.
 @Controller('team')
 @Perm('team')
 export class TeamController {
   constructor(private team: TeamService) {}
 
+  // List team members (no sensitive fields).
   @Get() list() { return this.team.list(); }
 
+  // Add a team member.
   @Post() async create(@Body() b: TeamMemberDto, @CurrentUser() me: AuthUser) {
     const u = await this.team.save(me, b, 'create');
     return { id: u.id, name: u.name, role: u.role, email: u.email, status: u.status };
   }
 
+  // Edit the fields sent for one member.
   @Patch(':name') async update(@Param('name') name: string, @Body() b: MemberUpdateDto, @CurrentUser() me: AuthUser) {
     const u = await this.team.save(me, { ...b, name }, 'update');
     return { id: u.id, name: u.name, role: u.role, email: u.email, status: u.status };
   }
 
+  // Activate or deactivate a member.
   @Post(':name/status') async status(@Param('name') name: string, @Body() b: StatusDto, @CurrentUser() me: AuthUser) {
     const u = await this.team.save(me, { name, status: b.status }, 'update');
     return { name: u.name, status: u.status };
   }
 
+  // Remove a member.
   @Delete(':name') async remove(@Param('name') name: string, @CurrentUser() me: AuthUser) {
     if (!(await this.team.remove(me, name))) throw new NotFoundException('Team member not found.');
     return { ok: true };
   }
 
+  // Set or reset a member's sign-in password.
   @Post(':name/password') setPassword(@Param('name') name: string, @Body() b: SetPasswordDto, @CurrentUser() me: AuthUser) {
     return this.team.setPassword(me, name, b.password, b.email);
   }

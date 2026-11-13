@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
+// Create the Nest app, apply global settings (prefix, CORS, validation) and start listening.
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Every route lives under /api (e.g. /api/auth/login).

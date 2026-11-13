@@ -6,6 +6,7 @@ import { PermissionsService } from '../auth/permissions.service';
 import { AuthUser } from '../auth/auth.decorators';
 import { leadReq, matchesFor } from './matching';
 
+// Requirement records.
 @Injectable()
 export class RequirementsService extends CrudService {
   // Prisma delegate (prisma.requirement).

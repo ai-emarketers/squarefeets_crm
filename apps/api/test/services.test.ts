@@ -12,8 +12,10 @@ import { JwtStrategy } from '../src/auth/jwt.strategy';
 
 // ---------------------------------------------------------------- in-memory Prisma stand-in
 let seq = 0;
+// Build an in-memory fake of the Prisma client (users, export requests, audit log) for fast tests.
 function makeDb() {
   const users: any[] = [], exportRequests: any[] = [], audit: any[] = [];
+  // True when a row satisfies every key/value in a Prisma-style `where`.
   const match = (row: any, where: any) => Object.entries(where || {}).every(([k, v]: any) => (v && typeof v === 'object' && 'in' in v ? v.in.includes(row[k]) : row[k] === v));
   return {
     users, exportRequests, audit,
@@ -45,6 +47,7 @@ const ACTIONS: Record<string, string[]> = {
 };
 const perms: any = { can: async (u: any, a: string) => u.role === 'Owner' || (ACTIONS[u.role] || []).includes(a), perms: async () => ({ mods: [], act: [] }), level: async () => 'write', canSeeNumbers: async () => true };
 
+// Create a fresh fake database plus the services under test, with an Owner, Admin and Agent seeded.
 function setup() {
   const db: any = makeDb();
   const audit = new AuditService(db);
@@ -52,14 +55,18 @@ function setup() {
   const exps = new ExportsService(db, perms, audit);
   return { db, audit, team, exps };
 }
+// Helper: insert a user row with sensible defaults.
 const mk = (db: any, o: any) => db.user.create({ data: { phone: '', corpPhone: '', altPhone: '', seeNumbers: false, status: 'Active', email: null, ...o } });
+// Helper: the shape of the signed-in user the controllers pass to the services.
 const asAuth = (u: any) => ({ id: u.id, name: u.name, role: u.role, email: u.email });
+// Helper: assert that a promise rejects with the given exception type (and message).
 const rejects = async (p: Promise<any>, type: any, msg?: RegExp) => {
   try { await p; } catch (e: any) { assert.ok(e instanceof type, `expected ${type.name}, got ${e?.constructor?.name}: ${e?.message}`); if (msg) assert.match(e.message, msg); return; }
   assert.fail(`expected ${type.name}, but nothing was thrown`);
 };
 
 let passed = 0;
+// Tiny test runner: run one named test and count passes/failures.
 async function t(name: string, fn: () => Promise<void>) { try { await fn(); passed++; console.log('  ok  ', name); } catch (e: any) { console.error('  FAIL', name, '\n      ', e.message); process.exitCode = 1; } }
 
 (async () => {

@@ -2,6 +2,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
+// Database client shared by the whole API; connects on start and disconnects on shutdown.
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   // Open the connection when Nest starts, close it on shutdown.

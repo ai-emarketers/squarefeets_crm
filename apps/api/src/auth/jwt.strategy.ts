@@ -5,8 +5,10 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 
+// Validates the bearer token and loads the user (also rejects tokens issued before sessionsValidFrom).
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  // Configure how the bearer token is read and which secret verifies it.
   constructor(private prisma: PrismaService, cfg: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // "Authorization: Bearer <token>"

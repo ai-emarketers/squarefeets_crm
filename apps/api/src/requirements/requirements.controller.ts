@@ -4,6 +4,7 @@ import { CrudController } from '../crud/crud.controller';
 import { Perm } from '../auth/auth.decorators';
 import { RequirementsService } from './requirements.service';
 
+// REST endpoints under /api/requirements.
 @Controller('requirements')
 @Perm('requirements')
 export class RequirementsController extends CrudController {

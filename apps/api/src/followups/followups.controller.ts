@@ -6,6 +6,7 @@ import { CrudController } from '../crud/crud.controller';
 import { Perm } from '../auth/auth.decorators';
 import { FollowUpsService } from './followups.service';
 
+// REST endpoints under /api/followups.
 @Controller('followups')
 // PermGuard checks the caller's role has read (GET) / write (other verbs) access to the "visits" module.
 @Perm('visits')

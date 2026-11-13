@@ -4,9 +4,11 @@ import { AuthUser, CurrentUser } from '../auth/auth.decorators';
 import { CreateExportRequestDto, DecisionDto } from './exports.dto';
 import { ExportsService } from './exports.service';
 
+// Export-approval endpoints: /api/exports/requests.
 @Controller('exports/requests')
 export class ExportsController {
   constructor(private svc: ExportsService) {}
+  // Mark an approved request as downloaded (requester only).
   @Get() list(@CurrentUser() u: AuthUser) { return this.svc.list(u); }
   @Post() create(@Body() b: CreateExportRequestDto, @CurrentUser() u: AuthUser) { return this.svc.create(u, { id: b.id, kind: b.kind, filters: b.filters, rowCount: b.rowCount }); }
   @Post(':id/decision') decide(@Param('id') id: string, @Body() b: DecisionDto, @CurrentUser() u: AuthUser) { return this.svc.decide(u, id, b.status); }

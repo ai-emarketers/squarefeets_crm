@@ -6,6 +6,7 @@ import { CrudController } from '../crud/crud.controller';
 import { Perm } from '../auth/auth.decorators';
 import { LeadsService } from './leads.service';
 
+// REST endpoints under /api/leads.
 @Controller('leads')
 // PermGuard checks the caller's role has read (GET) / write (other verbs) access to the "leads" module.
 @Perm('leads')

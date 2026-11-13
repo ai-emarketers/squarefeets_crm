@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../auth/permissions.service';
 import { AuthUser } from '../auth/auth.decorators';
 
+// Deal records.
 @Injectable()
 export class DealsService extends CrudService {
   // Name of the Prisma delegate (prisma.deal) this service reads and writes.

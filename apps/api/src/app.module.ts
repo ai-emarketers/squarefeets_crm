@@ -19,6 +19,7 @@ import { FilesModule } from './files/files.module';
 import { StateModule } from './state/state.module';
 import { HealthController } from './health.controller';
 
+// AppModule: root module — config, database, every feature module, and the global auth guards.
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }), // loads apps/api/.env into process.env
@@ -30,4 +31,5 @@ import { HealthController } from './health.controller';
   ],
   controllers: [HealthController],
 })
+// AppModule: Nest module — wires this feature's controller and service together.
 export class AppModule {}

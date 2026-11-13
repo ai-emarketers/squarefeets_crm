@@ -6,8 +6,10 @@ import { AuthUser } from './auth.decorators';
 
 // Column order of every row in the permission matrix: lv[module] = [Admin, Manager, Agent, Field staff].
 export const ROLES = ['Admin', 'Manager', 'Agent', 'Field staff'];
+// Access level of a role on a module: none, read-only, or read-write.
 export type Level = 'none' | 'read' | 'write';
 
+// Looks up what each role may do on each module and applies masking rules.
 @Injectable()
 export class PermissionsService {
   // Tiny 5-second cache so we don't hit the database for the matrix on every request.

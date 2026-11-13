@@ -7,6 +7,7 @@
 const nextConfig = {
   reactStrictMode: true,   // extra development-time checks
   poweredByHeader: false,  // don't advertise 'X-Powered-By: Next.js'
+  // Forward /api/* from the web app to the API service so the browser talks to one origin.
   async rewrites() {
     const api = (process.env.API_INTERNAL_URL || 'http://localhost:4000').replace(/\/$/, '');
     // /api/anything on the website  ->  <API server>/api/anything

@@ -1,4 +1,6 @@
+// sync.ts — adapter between the UI engine and the API (diff-based saving, file upload/open, logout).
 import { api, ApiError, clearToken } from '@/lib/api';
+import type { EngineState, Rec } from './engine-types';
 
 /**
  * Bridges the UI engine and the API.
@@ -25,16 +27,16 @@ export function createAdapter(onLogout: () => void) {
 
   let busy = false;     // a /sync request is in flight
 
-  let dirty: any = null; // newer state that arrived while busy (sent right after)
-  // = null;
+  let dirty: EngineState | null = null; // newer state that arrived while busy (sent right after)
   let hooks: Hooks = {};
 
   // short helpers: stringify, and strip UI-only keys (thumb, url, hasBlob) from file records before saving
-  const js = (v: any) => JSON.stringify(v);
-  const fileDoc = (f: any, scope: string) => { const { thumb, url, hasBlob, ...rest } = f; return { ...rest, scope }; };
+  const js = (v: unknown) => JSON.stringify(v);
+  // Copy of a file record without UI-only keys, tagged with its scope.
+  const fileDoc = (f: Rec, scope: string) => { const { thumb, url, hasBlob, ...rest } = f; return { ...rest, scope }; };
 
   // Pick an `_o` order number between a new record's neighbours so list order survives reloads.
-  function orderFor(arr: any[], i: number) {
+  function orderFor(arr: Rec[], i: number) {
     const p = arr[i - 1]?._o, n = arr[i + 1]?._o;
     if (typeof p === 'number' && typeof n === 'number') return (p + n) / 2;
     if (typeof n === 'number') return n - 1;
@@ -43,16 +45,16 @@ export function createAdapter(onLogout: () => void) {
   }
 
   // Compare the current UI state with the snapshot and build { collection: { put: [...], del: [...] } }.
-  function collect(S: any) {
-    const changes: any = {};
+  function collect(S: EngineState) {
+    const changes: Rec = {};
     const next: { coll: Record<string, Map<string, string>>; single: Record<string, string> } = { coll: {}, single: {} };
     let any = false;
     const fresh = new Set<string>(); // "coll:id" of records created since the last save
-    const add = (k: string, sub: string, v: any) => { ((changes[k] ||= {})[sub] ||= []).push(v); any = true; };
+    const add = (k: string, sub: string, v: unknown) => { ((changes[k] ||= {})[sub] ||= []).push(v); any = true; };
 
     // 1) main collections: changed/new docs -> put, vanished ids -> del
     for (const coll of Object.keys(COLL)) {
-      const arr: any[] = S[coll] || []; const pk = COLL[coll]; const cur = new Map<string, string>();
+      const arr: Rec[] = S[coll] || []; const pk = COLL[coll]; const cur = new Map<string, string>();
       arr.forEach((doc, i) => {
         const id = doc?.[pk]; if (id == null) return;
         const isNew = !snap[coll].has(String(id));
@@ -88,14 +90,14 @@ export function createAdapter(onLogout: () => void) {
   }
 
   // Send the pending changes. Only one request at a time; edits made meanwhile are re-sent afterwards.
-  async function flush(S: any) {
+  async function flush(S: EngineState): Promise<void> {
     if (busy) { dirty = S; return; }
     busy = true;
     try {
       const { changes, any, next, fresh } = collect(S);
       if (!any) return;
       // POST only the diff; the server answers with any rejected operations
-      const res: any = await api('/sync', { method: 'POST', body: changes });
+      const res: Rec = await api('/sync', { method: 'POST', body: changes });
       Object.assign(snap, next.coll); Object.assign(single, next.single);
       // Forget rejected records so they are not treated as saved (they are re-sent / re-checked on the next edit).
       // New ones stay "new"; edits to existing ones are marked changed so they are sent again.
@@ -107,7 +109,7 @@ export function createAdapter(onLogout: () => void) {
         const r = res.rejected[0];
         hooks.toast?.(`Some changes were not saved (${r.c}${r.id ? ' ' + r.id : ''}: ${r.reason}). Reload the page to see the saved data.`);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       // login expired -> go to the login page; other errors keep the data and retry on the next edit
       if (e instanceof ApiError && e.status === 401) { clearToken(); onLogout(); return; }
       hooks.toast?.('Could not reach the server — your last change is not saved yet. It will be retried on your next edit.');
@@ -121,15 +123,15 @@ export function createAdapter(onLogout: () => void) {
     // engine -> adapter: receive the toast/render callbacks
     attach(h: Hooks) { hooks = h; },
     // direct API call for actions that are not part of the /sync diff (set / change password)
-    api: (path: string, opts?: any) => api(path, opts),
+    api: (path: string, opts?: Rec) => api(path, opts),
     /** Called by the engine after BOOT is applied; the baseline is taken on the first save (after normalisation). */
-    loaded(_S: any) {},
+    loaded(_S: EngineState) {},
     // engine calls this after every change. First call = take the baseline, later calls = flush the diff.
-    save(S: any) {
+    save(S: EngineState) {
       if (!inited) {
-        for (const c of Object.keys(COLL)) snap[c] = new Map((S[c] || []).map((d: any) => [String(d[COLL[c]]), js(d)]));
-        snap.team = new Map((S.team || []).map((d: any) => [d.name, js(d)]));
-        snap.amen = new Map((S.amen || []).map((d: any) => [d.id, js(d)]));
+        for (const c of Object.keys(COLL)) snap[c] = new Map((S[c] || []).map((d: Rec) => [String(d[COLL[c]]), js(d)]));
+        snap.team = new Map((S.team || []).map((d: Rec) => [d.name, js(d)]));
+        snap.amen = new Map((S.amen || []).map((d: Rec) => [d.id, js(d)]));
         const f = new Map<string, string>();
         for (const scope of Object.keys(S.files || {})) if (!scope.includes('__draft')) for (const x of S.files[scope]) f.set(x.id, js(fileDoc(x, scope)));
         snap.files = f;
@@ -142,16 +144,16 @@ export function createAdapter(onLogout: () => void) {
       void flush(S);
     },
     // Upload the binary of a document record to /files/upload (metadata itself is synced via /sync).
-    async upload(rec: any, file: File, scope: string) {
+    async upload(rec: Rec, file: File, scope: string) {
       try {
         const form = new FormData();
         form.append('file', file); form.append('id', rec.id); form.append('scope', scope); form.append('cat', rec.cat || 'Other');
         await api('/files/upload', { form });
         rec.hasBlob = true;
-      } catch (e: any) { hooks.toast?.(`Could not store ${rec.name}: ${e?.message || 'upload failed'}`); }
+      } catch (e: unknown) { hooks.toast?.(`Could not store ${rec.name}: ${(e as Error)?.message || 'upload failed'}`); }
     },
     /** Resolve a stored file to a blob: URL (the API needs the bearer token, so <a href> cannot hit it directly). */
-    async openUrl(rec: any, render: () => void) {
+    async openUrl(rec: Rec, render: () => void) {
       if (rec.url || !rec.hasBlob) return;
       try {
         const res: Response = await api(`/files/${rec.id}/content`, { raw: true });
@@ -164,7 +166,7 @@ export function createAdapter(onLogout: () => void) {
     },
     /** Thumbnails for stored images are fetched in the background so lists show pictures after a reload. */
     // Fetch thumbnails for up to 24 stored images so lists show pictures after a reload.
-    async hydrate(S: any) {
+    async hydrate(S: EngineState) {
       let n = 0;
       for (const scope of Object.keys(S.files || {})) for (const f of S.files[scope]) {
         if (n >= 24) return;

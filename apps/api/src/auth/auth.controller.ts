@@ -10,6 +10,7 @@ class LoginDto { @IsEmail() email: string; @IsString() password: string; }
 // Request body of /password: validated before it reaches the service.
 class ChangePasswordDto { @IsString() current: string; @IsString() @MinLength(8, { message: 'New password must be at least 8 characters.' }) next: string; }
 
+// Auth endpoints: login, current user, change password.
 @Controller('auth')
 export class AuthController {
   constructor(private auth: AuthService) {}

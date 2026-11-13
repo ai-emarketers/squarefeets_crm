@@ -14,9 +14,11 @@ import { ExportsModule } from '../exports/exports.module';
 import { StateController } from './state.controller';
 import { StateService } from './state.service';
 
+// StateModule: Nest module — wires this feature's controller and service together.
 @Module({
   imports: [ProjectsModule, PropertiesModule, LeadsModule, ProspectsModule, RequirementsModule, VisitsModule, FollowUpsModule, DealsModule, BrokerageModule, TeamModule, ExportsModule],
   controllers: [StateController],
   providers: [StateService],
 })
+// StateModule: Nest module — wires this feature's controller and service together.
 export class StateModule {}

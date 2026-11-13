@@ -1,3 +1,6 @@
+// State service — the two calls that keep the browser UI and the database in step:
+//   bootstrap(user): everything the UI needs after sign-in (records the role may see, team, masters, export requests, audit).
+//   sync(user, changes): applies the UI's diff, record by record, enforcing write permission and masking.
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../auth/permissions.service';
@@ -40,6 +43,7 @@ const KV_KEYS = ['mreq', 'alerts', 'viewLog', 'exportLog', 'imports', 'roles']; 
 // Organization keys stored in real columns; any other org key is kept in the `settings` JSON.
 const ORG_COLUMNS = ['name', 'rera', 'gstin', 'city', 'state', 'country', 'bank', 'persona', 'notif'];
 
+// Bootstrap (everything the UI needs after sign-in) and /sync (apply the UI diff).
 @Injectable()
 export class StateService {
   // service lookup by key (projects, properties, leads, ...), used to loop over COLLECTIONS generically

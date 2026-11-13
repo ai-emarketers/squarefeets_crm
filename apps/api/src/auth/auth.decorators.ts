@@ -3,6 +3,7 @@ import { SetMetadata, createParamDecorator, ExecutionContext } from '@nestjs/com
 
 // @Public() marks a route that needs no login (login, health). JwtAuthGuard looks for this flag.
 export const IS_PUBLIC = 'isPublic';
+// @Public() marks a route that needs no sign-in (e.g. login, health).
 export const Public = () => SetMetadata(IS_PUBLIC, true);
 
 // @Perm('deals') says which permission module governs a controller/route (see Organization.perms).

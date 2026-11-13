@@ -3,6 +3,7 @@ import { Controller, Get } from '@nestjs/common';
 import { Public } from './auth/auth.decorators';
 import { PrismaService } from './prisma/prisma.service';
 
+// Liveness probe used by Railway: GET /api/health.
 @Controller('health')
 export class HealthController {
   constructor(private prisma: PrismaService) {}

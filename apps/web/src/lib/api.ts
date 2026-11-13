@@ -7,7 +7,9 @@ const TOKEN_KEY = 'sfcrm-token';
 
 // Token helpers (guarded for server-side rendering where `window` does not exist).
 export const getToken = () => (typeof window === 'undefined' ? null : window.localStorage.getItem(TOKEN_KEY));
+// Remember the sign-in token in the browser.
 export const setToken = (t: string) => window.localStorage.setItem(TOKEN_KEY, t);
+// Forget the sign-in token (sign out).
 export const clearToken = () => window.localStorage.removeItem(TOKEN_KEY);
 
 // Error carrying the HTTP status so callers can react to 401 (expired login) etc.

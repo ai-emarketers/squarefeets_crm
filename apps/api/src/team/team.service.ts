@@ -19,6 +19,7 @@ export interface TeamInput {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Team rules: owner protection, no self-lockout, unique email, session cut-off on deactivation.
 @Injectable()
 export class TeamService {
   constructor(private prisma: PrismaService, private audit: AuditService) {}

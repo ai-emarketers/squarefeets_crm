@@ -9,6 +9,7 @@ import { PermissionsService } from './permissions.service';
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(private reflector: Reflector) { super(); }
+  // Allow the request when a valid JWT is present, or when the route is marked @Public().
   canActivate(ctx: ExecutionContext) {
     const pub = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [ctx.getHandler(), ctx.getClass()]);
     if (pub) return true;
@@ -20,6 +21,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 @Injectable()
 export class PermGuard implements CanActivate {
   constructor(private reflector: Reflector, private perms: PermissionsService) {}
+  // Check the role's access level for the module/action the route declares; reject with 403 when it is too low.
   async canActivate(ctx: ExecutionContext) {
     const mod = this.reflector.getAllAndOverride<string>(PERM_KEY, [ctx.getHandler(), ctx.getClass()]);
     const acts = this.reflector.getAllAndOverride<string[]>(ACT_KEY, [ctx.getHandler(), ctx.getClass()]);

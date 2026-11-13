@@ -10,6 +10,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { PermissionsService } from './permissions.service';
 import { JwtAuthGuard, PermGuard } from './guards';
 
+// AuthModule: JWT + passport setup, guards and the permission service (global so every feature can use them).
 @Global()
 @Module({
   imports: [
@@ -35,4 +36,5 @@ import { JwtAuthGuard, PermGuard } from './guards';
   ],
   exports: [PermissionsService, AuthService],
 })
+// AuthModule: Nest module — wires this feature's controller and service together.
 export class AuthModule {}

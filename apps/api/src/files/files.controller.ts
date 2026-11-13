@@ -16,6 +16,7 @@ const OK_TYPE = /\.(pdf|jpe?g|png|webp|heic|docx?|xlsx?|csv|txt)$/i;
 /** Which permission module governs documents of each scope type (prop:RS001, deal:DEAL-0142 …). */
 const SCOPE_MODULE: Record<string, string> = { prop: 'properties', proj: 'projects', pros: 'prospects', lead: 'leads', deal: 'deals', brok: 'brokerage', visit: 'visits', req: 'requirements' };
 
+// Document upload/download endpoints under /api/files.
 @Controller('files')
 export class FilesController {
   // Prisma stores the file metadata; PermissionsService checks module access for the file's scope.

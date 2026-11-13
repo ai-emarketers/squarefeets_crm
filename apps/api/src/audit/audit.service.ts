@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+// Writes and reads the audit log. Logging never throws, so it cannot break the action it records.
 @Injectable()
 export class AuditService {
   constructor(private prisma: PrismaService) {}

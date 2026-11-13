@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../auth/permissions.service';
 import { AuthUser } from '../auth/auth.decorators';
 
+// Follow-up records.
 @Injectable()
 export class FollowUpsService extends CrudService {
   // Name of the Prisma delegate (prisma.followUp) this service reads and writes.

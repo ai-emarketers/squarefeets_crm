@@ -1,4 +1,3 @@
-// @ts-nocheck
 /* eslint-disable */
 /**
  * SquareFeets CRM — UI engine.
@@ -11,7 +10,11 @@
  * deals & brokerage · export/masters/capture/team/settings · modals · router · actions · import wizard.
  * Migration path: lift one screen at a time out of this file into a React component under src/features/.
  */
-export function startCrm(host: HTMLElement, BOOT: any, ADAPTER: any): () => void {
+// Types shared with sync.ts (the state shape, the adapter the engine talks to, click handlers).
+import type { ActHandler, Boot, EngineAdapter, EngineState, Rec } from './engine-types';
+
+// Entry point: mounts the whole CRM UI into `host`, wires events, and returns a function that tears it down again.
+export function startCrm(host: HTMLElement, BOOT: Boot, ADAPTER: EngineAdapter): () => void {
 // Cleanup callbacks: every document/window listener registered by the engine is removed again when the page unmounts.
 const _off: Array<() => void> = [];
 // document.addEventListener wrapper that remembers how to undo itself (see _off).
@@ -22,7 +25,7 @@ const _win = { addEventListener: (t: string, f: any, o?: any) => { window.addEve
 // HTML-escape text before putting it into a template string (prevents XSS from user-entered data).
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // SVG path data for every icon used in the UI, keyed by icon name.
-const IC = {
+const IC: Record<string, string> = {
   dash: 'M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
   proj: 'M4 21V5l8-3 8 3v16M9 21v-4h6v4M8 9h2M14 9h2M8 13h2M14 13h2',
   prop: 'M3 21h18M5 21V8l7-5 7 5v13M10 21v-6h4v6',
@@ -176,7 +179,14 @@ const PLACES = [
 ];
 
 // THE application state. Everything the UI shows lives in this one object; BOOT (from /api/bootstrap) is merged over these UI defaults. Every change calls saveState() which diffs and syncs to the server.
-const S = {
+// Handle of the pending auto-dismiss timer for the toast message.
+let toastTimer: any;
+// Functions that later sections deliberately wrap/replace are held in rebindable variables (initialised from the hoisted declarations).
+let modalExtra: (...a: any[]) => any = modalExtra0;
+let afterInput: (...a: any[]) => any = afterInput0;
+let reqForm: (...a: any[]) => any = reqForm0;
+let render: (...a: any[]) => any = render0;
+const S: EngineState = {
   amen: AMEN0,
   projects: [
     { id: 'p1', name: 'Merlin Verve', dev: 'Merlin Group', type: 'Apartment complex', rera: 'WBRERA/P/KOL/2024/000123', status: 'uc', complete: 'Dec 2027', size: '16', towers: '6', units: '480', configs: ['2 BHK', '3 BHK', '4 BHK'], sale: true, rent: true, saleFrom: '68 L', saleTo: '1.5 Cr', rentFrom: '28,000', rentTo: '45,000', place: PLACES[0], addr: { tower: 'Tower 1–6', street: 'Sector V, Salt Lake', landmark: 'Near Technopolis', pin: '700091', city: 'Kolkata', state: 'West Bengal' }, amenities: ['clubhouse', 'swimming_pool', 'gym', 'jogging_track', 'play_area', 'security'], brochure: 'Merlin_Verve_brochure.pdf' },
@@ -299,6 +309,7 @@ S.d.docq = '';
   Object.assign(S.props.find((p) => p.id === 'RS001'), { carpet: 1180, bu: 1300, sbu: 1450, sub: 'Flat / Apartment' });
   S.prospects.forEach((c, i) => { c.created = c.created || iso(addDays(today, -60 + i * 9)); c.waOk = c.waOk !== false; });
   S.prospects.find((c) => c.id === 'c4').waOk = false;
+  // Patch one lead (found by id) with the given fields.
   const setL = (id, o) => Object.assign(S.leads.find((l) => l.id === id), o);
   S.leads.forEach((l, i) => { l.created = l.created || iso(addDays(today, -40 + i * 6)); });
   setL('l1', { stage: 'Converted', basic: { locText: 'New Town', min: 100, max: 130, bhk: 2 } });
@@ -307,6 +318,7 @@ S.d.docq = '';
   setL('l4', { basic: { locText: 'Rajarhat', min: 40, max: 60, bhk: 0 } });
   setL('l5', { stage: 'Converted', basic: { locText: 'Sector V', min: 80, max: 100, bhk: 0 } });
   setL('l6', { basic: { locText: '', min: 0, max: 0, bhk: 0 } });
+  // Patch one deal (found by id) with the given fields.
   const set = (id, o) => Object.assign(S.deals.find((d) => d.id === id), o);
   set('DEAL-0142', { ask: 138, bid: 130, openedBy: 'Anil Sharma', closedBy: 'Anil Sharma', closedByEdited: true, created: '2026-08-25', timeline: undefined, agreedOn: '2026-09-01', handled: undefined, notes: '' });
   set('DEAL-0145', { ask: 38, bid: 34, close: '', openedBy: 'Anil Sharma', closedBy: 'Anil Sharma', created: '2026-09-14', leaseStart: '2026-10-01', tenure: 11, depMonths: 2, handled: undefined, notes: '' });
@@ -336,7 +348,7 @@ const purposeSeg = (k) => seg([['all', 'All'], ['sale', 'Sale'], ['rent', 'Rent/
 // Sale / Rent-Lease selector inside forms.
 const purposeSet = (p, cur) => `<div class="seg" role="group">${[['sale', 'Sale'], ['rent', 'Rent/Lease']].map(([v, l]) => `<button type="button" class="${cur === v ? 'on' : ''}" data-act="setf" data-p="${p}" data-v="${v}">${l}</button>`).join('')}</div>`;
 // Form field renderer: label + input/select/textarea bound to a state path, with error text and prefix/suffix support.
-function fld(label, p, o = {}) {
+function fld(label, p, o: Rec = {}) {
   const v = get(S, p); const id = 'f_' + p.replace(/\./g, '_'); let ctl; const er = S.err && S.err[p];
   const aria = !label ? ` aria-label="${esc(o.aria || p.split('.').pop().replace(/([A-Z])/g, ' $1').toLowerCase())}"` : '';
   if (o.opts) ctl = `<div class="inp sel"><select id="${id}" data-f="${p}" ${o.rer ? 'data-render="1"' : ''}${aria}>${o.opts.map((x) => { const a = Array.isArray(x) ? x : [x, x]; return `<option value="${esc(a[0])}" ${String(v) === String(a[0]) ? 'selected' : ''}>${esc(a[1])}</option>`; }).join('')}</select></div>`;
@@ -355,15 +367,15 @@ const ph = (h, label = '', extra = '') => `<div class="ph" style="height:${h}px;
 // Info / success / warning / error banner.
 const note = (t, k = '') => `<div class="note ${k}">${ico(k === 'ok' ? 'check' : 'info', 18)}<div>${t}</div></div>`;
 // Button or link-button markup (variants via o.k and o.c).
-const btn = (t, o = {}) => (o.href ? `<a class="btn ${o.k || ''} ${o.c || ''}" href="${o.href}">${o.i ? ico(o.i, 18) : ''}${t}</a>` : `<button type="button" class="btn ${o.k || ''} ${o.c || ''}" ${o.a || ''}>${o.i ? ico(o.i, 18) : ''}${t}</button>`);
+const btn = (t, o: Rec = {}) => (o.href ? `<a class="btn ${o.k || ''} ${o.c || ''}" href="${o.href}">${o.i ? ico(o.i, 18) : ''}${t}</a>` : `<button type="button" class="btn ${o.k || ''} ${o.c || ''}" ${o.a || ''}>${o.i ? ico(o.i, 18) : ''}${t}</button>`);
 // Standard page frame: title, subtitle, header actions and body.
 const page = (title, sub, actions, body) => `<div class="head"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div><div class="grow"></div><div class="head">${actions || ''}</div></div>${body}`;
 // White card container.
 const card = (inner, cls = '') => `<div class="card ${cls}">${inner}</div>`;
 // Unused placeholder kept from the prototype.
-const searchBox = () => '';
+const searchBox = (_key?, _placeholder?) => '';
 // Empty-state block with a message and optional action.
-const empty = (t, s, a) => `<div style="padding:48px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><div style="width:72px;height:72px;border-radius:50%;background:var(--line2);border:1px dashed var(--field);display:flex;align-items:center;justify-content:center;color:var(--muted)">${ico('search', 28)}</div><h2>${t}</h2><div class="sub" style="max-width:380px">${s}</div>${a || ''}</div>`;
+const empty = (t, s, a?) => `<div style="padding:48px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><div style="width:72px;height:72px;border-radius:50%;background:var(--line2);border:1px dashed var(--field);display:flex;align-items:center;justify-content:center;color:var(--muted)">${ico('search', 28)}</div><h2>${t}</h2><div class="sub" style="max-width:380px">${s}</div>${a || ''}</div>`;
 // Tab strip bound to S.tab[k].
 const tabsBar = (k, items, cur) => `<div class="tabs" role="tablist">${items.map(([v, l]) => `<button type="button" role="tab" class="${cur === v ? 'on' : ''}" data-act="tab" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
 // Badge coloured by property status.
@@ -392,6 +404,7 @@ const LISTQ = { projects: ['q.projects', 'Search projects…'], properties: ['q.
 const BACK = { projects: 'Projects', properties: 'Properties', leads: 'Leads', prospects: 'Prospects', requirements: 'Requirements', visits: 'Visits', deals: 'Deals', brokerage: 'Brokerage' };
 // Results of the top-bar global search across projects, properties, leads and prospects.
 function globalResults() {
+  // Global search: nothing is searched until the user has typed something.
   const q = (S.q.gs || '').trim().toLowerCase(); if (!q) return [];
   const r = [];
   S.props.forEach((p) => { if ((p.id + p.title + p.loc).toLowerCase().includes(q)) r.push(['Property', propLabel(p), '#/properties/' + p.id]); });
@@ -480,7 +493,7 @@ const docStatusBadge = (s) => badge(s, s === 'Verified' ? 'ok' : s === 'Needs re
 // Icon for a file (image or generic).
 const fileIcon = (f) => ico(isImg(f) ? 'img' : 'file', 22);
 // Create a sample file record (used for seed defaults).
-function sf(id, name, cat, size, st, o) { return Object.assign({ id, name, cat, size, type: name.endsWith('.jpg') ? 'image/jpeg' : 'application/pdf', st, share: false, valid: '', by: 'Anil Sharma', at: '2026-09-18', thumb: null, url: null, sample: true }, o || {}); }
+function sf(id, name, cat, size, st, o?) { return Object.assign({ id, name, cat, size, type: name.endsWith('.jpg') ? 'image/jpeg' : 'application/pdf', st, share: false, valid: '', by: 'Anil Sharma', at: '2026-09-18', thumb: null, url: null, sample: true }, o || {}); }
 S.files = {
   'prop:RS001': [sf('sd1', 'Sale_deed_RS001.pdf', 'Sale deed / Title deed', 2516582, 'Verified'), sf('sd2', 'Property_tax_2025-26.pdf', 'Property tax receipt', 317440, 'Verified', { share: true }), sf('sd3', 'Owner_PAN_SGhosh.jpg', 'Owner ID proof', 184320, 'Verified'), sf('sd4', 'Floor_plan_3BHK.pdf', 'Floor plan / layout', 1153434, 'Uploaded', { share: true }), sf('sd5', 'Society_NOC.pdf', 'Society NOC / share certificate', 402653, 'Uploaded', { valid: '2026-10-15' })],
   'prop:RS002': [sf('sd6', 'Ideal_Grandeur_brochure.pdf', 'Brochure', 3355443, 'Verified', { share: true }), sf('sd7', 'Tax_receipt_RS002.pdf', 'Property tax receipt', 290816, 'Uploaded', { share: true })],
@@ -526,7 +539,7 @@ function recOptions(type) {
 // Handle chosen/dropped files: validate type & size, create records, upload to the API.
 function addFiles(scope, list, cat, el) {
   const arr = filesOf(scope); const t = scopeType(scope); let ok = 0; const bad = [];
-  Array.from(list || []).forEach((f) => {
+  (Array.from(list || []) as File[]).forEach((f) => {
     if (f.size > 10 * 1048576) { bad.push(f.name + ' is over 10 MB'); return; }
     if (!okType.test(f.name)) { bad.push(f.name + ' — file type not supported'); return; }
     if (arr.some((x) => x.name === f.name && x.size === f.size)) { bad.push(f.name + ' is already uploaded'); return; }
@@ -580,7 +593,7 @@ const catFor = (scope) => get(S, 'd.docCat.' + scope) || (DOC_CATS[scopeType(sco
 // Selection checkbox of a document row.
 const selBox = (f) => `<button type="button" class="fx" style="border-left:none;border-right:1px solid var(--line);padding:0 8px" data-act="dsel" data-fid="${f.id}" aria-label="Select ${esc(f.name)}"><span class="cb${S.d.dsel[f.id] ? ' on' : ''}" style="width:18px;height:18px">${S.d.dsel[f.id] ? ico('check', 12) : ''}</span></button>`;
 // Documents panel for a scope: simple list for most records, vault for deals.
-function docPanel(scope) { return scopeType(scope) === 'deal' ? docVault(scope) : docSimple(scope); }
+function docPanel(scope, _opts?) { return scopeType(scope) === 'deal' ? docVault(scope) : docSimple(scope); }
 // Simple documents panel (upload + list).
 function docSimple(scope) {
   const t = scopeType(scope); const cats = DOC_CATS[t] || ['Other']; const key = 'd.docCat.' + scope; let cur = get(S, key); if (!cats.includes(cur)) { cur = cats[0]; setp(S, key, cur); }
@@ -597,11 +610,14 @@ function docSimple(scope) {
 function docVault(scope) {
   const id = scopeId(scope); const d = S.deals.find((x) => x.id === id); if (!d) return '';
   const i = S.deals.indexOf(d); const groups = docGroups(scope); const known = groups.flatMap((g) => g.c);
+  // Document search text, and which documents belong to the scope.
   const q = (S.d.docq || '').trim().toLowerCase(); const fsAll = filesOf(scope);
+  // A category matches when the search is empty, matches its name, or matches one of its files.
   const matchCat = (c) => !q || c.toLowerCase().includes(q) || fsAll.some((f) => (f.cat === c || (c === 'Other' && !known.includes(f.cat))) && f.name.toLowerCase().includes(q));
   const dp = docsProgress(d);
   const sections = groups.map((g) => { const cs = g.c.filter(matchCat); if (!cs.length) return ''; const up = cs.filter((c) => { const has = fsAll.some((f) => (c === 'Other' ? (f.cat === 'Other' || !known.includes(f.cat)) : f.cat === c)); const row = d.docs.find((x) => x.name === c); return has || (row && ['Received', 'Verified'].includes(row.st)); }).length; return `<div class="dgroup"><div class="head" style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--line)"><b style="font-size:14px">${esc(g.t)}</b><div class="grow"></div><span class="sub" style="font-size:12px">${up} of ${cs.length} uploaded</span></div>${cs.map((c) => slotRow(scope, c, known)).join('')}</div>`; }).join('');
   const sel = Object.keys(S.d.dsel).filter((fid) => S.d.dsel[fid] && fsAll.some((f) => f.id === fid));
+  // Requirements newest first (copy the array so the original order is untouched).
   const reqs = (d.reqs || []).slice().reverse();
   return `<div style="display:flex;flex-direction:column;gap:14px"><div class="head"><h2>Document vault</h2>${badge(fsAll.length + ' file' + (fsAll.length === 1 ? '' : 's'))}<div class="grow"></div>${btn('Request documents', { k: 'ghost', i: 'upload', a: `data-act="docRequest" data-i="${i}"` })}${btn('Share selected' + (sel.length ? ' (' + sel.length + ')' : ''), { i: 'chat', a: `data-act="dealShare" data-i="${i}"`, c: sel.length ? '' : '' })}</div>
   <div class="sub" style="font-size:12px;margin-top:-8px">Every paper for this deal, in one searchable place. All documents are optional — mark a row N/A if it does not apply. Tick files to share them with the parties by WhatsApp or email.</div>
@@ -704,6 +720,7 @@ const chargeAmt = (c, area) => Math.round((Number(String(c.rate).replace(/[^0-9.
 const chargeLive = (c) => !c.from || c.from <= iso(today);
 // Stand-in for AI brochure extraction: returns plausible project fields.
 function mockExtract(d) {
+  // Display name for a project: typed name, else derived from the brochure file name.
   const nm = (d.name || '').trim() || String(d.brochure || '').replace(/\.\w+$/, '').replace(/[_-]+/g, ' ').replace(/brochure/i, '').trim() || 'Sample Heights';
   return { name: nm, dev: 'Sample Developers Pvt Ltd', type: 'Residential Complex', rera: 'WBRERA/P/KOL/2026/000999', status: 'uc', cm: 'Dec', cy: '2028', size: '12', sizeUnit: 'acres', towers: '5', units: '420', configs: ['2 BHK', '3 BHK', '4 BHK'], saleFrom: '72 L', saleTo: '1.6 Cr', amenities: ['clubhouse', 'swimming_pool', 'gym', 'security'], layouts: [{ cfg: '2 BHK', name: 'Type A', area: '1,010', baths: '2', units: '140' }, { cfg: '3 BHK', name: 'Type B', area: '1,420', baths: '3', units: '200' }, { cfg: '4 BHK', name: 'Type C', area: '2,050', baths: '4', units: '80' }] };
 }
@@ -714,6 +731,7 @@ function aiCard(d) {
   const a = d.ai; if (!d.brochure) return '';
   if (!a) return `<div class="note">${ico('info', 18)}<div><b>Fill the form from the brochure</b><div class="sub" style="font-size:12px">AI reads the brochure and suggests values. You review every field before anything is saved.</div></div></div>${btn('Extract details from brochure', { i: 'match', a: 'data-act="aiExtract"' })}`;
   const ks = Object.keys(a.data);
+  // Format one extracted field for display (amenities are shown by their labels).
   const show = (k, v) => (k === 'amenities' ? v.map((id) => (S.amen.find((x) => x.id === id) || {}).label).filter(Boolean).join(', ') : k === 'layouts' ? v.length + ' layouts (' + v.map((l) => l.cfg + ' ' + l.area).join(', ') + ')' : Array.isArray(v) ? v.join(', ') : k === 'status' ? (v === 'ready' ? 'Ready for operation' : 'Under construction') : v);
   return `<div class="card" style="background:var(--bg);gap:8px"><div class="head"><b>Preview — suggested from the brochure</b><div class="grow"></div>${badge('Review before applying', 'warn')}</div><div class="sub" style="font-size:12px">Untick anything that looks wrong. Nothing changes in the form until you apply. (Prototype: sample values — the live product reads your PDF.)</div>
   ${ks.map((k) => chk(a.pick[k] !== false, `<b>${AI_LABEL[k] || k}</b> · ${esc(show(k, a.data[k]))}`, `data-act="aiPick" data-k="${k}"`)).join('')}<div class="chips">${btn('Apply selected', { a: 'data-act="aiApply"' })}${btn('Discard', { k: 'sec', a: 'data-act="aiDiscard"' })}</div></div>`;
@@ -747,6 +765,7 @@ function projectForm(edit) {
     layoutsCard(d), chargesCard(d, edit),
     card(docPanel('proj:__draft', { title: 'Project documents' }))
   ].join('');
+  // Sale / Rent / Both toggle chips.
   function bool() { return `<div class="chips">${chip('Sale', d.sale, 'data-act="togb" data-p="d.project.sale"')}${chip('Rent/Lease', d.rent, 'data-act="togb" data-p="d.project.rent"')}</div>`; }
   const right = [
     card(`<h2>Available for</h2>${bool()}<div class="sub" style="font-size:12px">Sale and Rent/Lease properties can both be listed under one project.</div>`),
@@ -761,9 +780,11 @@ function projectDetail(id) {
   const p = projById(id); if (!p) return page('Project not found', '', '', card(btn('Back to projects', { href: '#/projects' })));
   const tab = S.tab.projUnits || 'all'; const area = S.tab.pchArea || '1450';
   const units = S.props.filter((u) => u.projectId === p.id && (tab === 'all' || u.purpose === tab));
+  // Resolve amenity ids to amenity records and count the units.
   const am = (p.amenities || []).map((a) => S.amen.find((x) => x.id === a)).filter(Boolean); const c = unitCounts(p.id);
   const overview = kv([['Developer', esc(p.dev || '—')], ['Project type', esc(p.type)], ['RERA ID', esc(p.rera || '—')], ['Size', p.size ? esc(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : '—'], ['Towers · Units', esc((p.towers || '—') + ' towers · ' + (p.units || '—') + ' units')], ['Configurations', esc((p.configs || []).join(', ') || '—')], ['Sale price range', p.sale && (p.saleFrom || p.saleTo) ? '₹' + esc(p.saleFrom) + ' – ₹' + esc(p.saleTo) : '—'], ['Rent/Lease range', p.rent && (p.rentFrom || p.rentTo) ? '₹' + esc(p.rentFrom) + ' – ₹' + esc(p.rentTo) + ' /mo' : '—'], ['Available for', (p.sale ? 'Sale' : '') + (p.sale && p.rent ? ' · ' : '') + (p.rent ? 'Rent/Lease' : '')]]);
   const ut = units.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Unit</th><th>Purpose</th><th>Specs</th><th>Price / rent</th><th>Status</th></tr></thead><tbody>${units.map((u) => `<tr class="lnk" data-href="#/properties/${u.id}"><td><span class="mono sub" style="font-size:11px">${u.id}</span><div><b>${esc(u.title)}</b></div><div class="sub" style="font-size:12px">${esc(u.unit)}</div></td><td>${badge(PURPOSE[u.purpose], u.purpose === 'rent' ? 'blue' : '')}</td><td class="sub">${u.area} sq ft · ${esc(u.furn)}</td><td><b>${fmtPrice(u)}</b></td><td>${statusBadge(u.status)}</td></tr>`).join('')}</tbody></table></div>` : `<div class="sub" style="padding:24px 16px">No ${tab === 'all' ? '' : PURPOSE[tab] + ' '}units listed yet.</div>`;
+  // Layout (configuration) table, shown only when the project has layouts.
   const lay = (p.layouts || []).length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Configuration</th><th>Layout</th><th>Area</th><th>Baths</th><th>Units</th></tr></thead><tbody>${p.layouts.map((l) => `<tr><td><b>${esc(l.cfg)}</b></td><td>${esc(l.name)}</td><td>${esc(l.area)} sq ft</td><td>${esc(l.baths || '—')}</td><td>${esc(l.units || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="sub">No layouts added yet.</div>';
   const chg = personaShowsCharges() && (p.charges || []).length ? card(`<h2>Charges per sq ft</h2><div class="row" style="align-items:flex-end">${fld('For a unit of', 'tab.pchArea', { suf: 'sq ft', rer: 1, style: 'max-width:200px' })}</div>${kv(p.charges.map((x) => [esc(x.name) + ' <span class="sub">· ₹' + esc(x.rate) + '/sq ft' + (x.from ? ' from ' + esc(dateTxt(x.from)) : '') + '</span>', inr(chargeAmt(x, area)) + (chargeLive(x) ? '' : ' <span class="badge">Upcoming</span>')]))}`) : '';
   return page(esc(p.name), esc(p.place ? p.place.sub : 'No location set'), btn('Edit project', { k: 'sec', i: 'edit', a: `data-act="editProject" data-id="${p.id}"` }) + btn('Add property', { i: 'plus', a: `data-act="newProperty" data-pid="${p.id}"` }),
@@ -777,6 +798,7 @@ function projectDetail(id) {
 }
 // Projects list screen with search and filters.
 function projectsView() {
+  // Filters currently applied to the project list.
   const q = (S.q.projects || '').toLowerCase(); const pf = S.f.projects; const st = S.tab.projStatus || 'all';
   const rows = S.projects.filter((p) => { const c = unitCounts(p.id); const purposeOk = pf === 'all' || (pf === 'sale' ? (p.sale || c.sale) : (p.rent || c.rent)); return purposeOk && (st === 'all' || p.status === st) && (!q || (p.name + (p.place ? p.place.sub : '')).toLowerCase().includes(q)); });
   const tbl = rows.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Project</th><th>Available for</th><th>Size</th><th>Units listed</th><th>Status</th><th>Expected completion</th>${rowActsTh()}</tr></thead><tbody>${rows.map((p) => { const c = unitCounts(p.id); return `<tr class="lnk" data-href="#/projects/${p.id}"><td><div style="display:flex;gap:10px;align-items:center"><div class="ph" style="width:56px;height:44px;flex:none">${ico('img', 16)}</div><div><a href="#/projects/${p.id}" style="font-weight:600">${esc(p.name)}</a><div class="sub" style="font-size:12px">${esc(p.place ? p.place.sub.split(',').slice(0, 2).join(', ') : '—')}</div></div></div></td><td>${p.sale ? badge('Sale') : ''} ${p.rent ? badge('Rent/Lease', 'blue') : ''}</td><td>${p.size ? esc(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : esc(p.type)}</td><td><b style="color:var(--p)">${c.sale} sale · ${c.rent} rent/lease</b></td><td>${projStatus(p.status)}</td><td class="sub">${esc(projCompl(p) || '—')}</td>${rowActsTd('project', p.id)}</tr>`; }).join('')}</tbody></table></div>` : empty('No projects match', 'A Project is any building or development — even a single standalone house counts as one, containing just one Property.', btn('Add project', { a: 'data-act="newProject"', i: 'plus' }));
@@ -796,6 +818,7 @@ function amenList() {
 }
 // Amenity picker modal.
 function pickAmenities() {
+  // Amenity picker: where to go back to, and the working copy of the project being edited.
   const back = (S.ctx && S.ctx.ret) || '#/projects/new'; const P = S.d.project; const sel = P.amenities; const cu = P.customAmen || [];
   return page('Amenities', 'Search the list, or add your own tag. Spelling is checked and duplicates are blocked', btn('Cancel', { k: 'sec', href: back }) + btn('Save amenities', { a: 'data-act="saveAmen"' }),
     `<div class="grid2"><div class="card"><div><h2>Add amenities</h2><div class="sub">Pick from the list. If it isn’t there, type it and add it.</div></div>
@@ -826,8 +849,9 @@ function ctxObj() { return S.d[(S.ctx && S.ctx.ctx) || 'project']; }
 // Location picker modal (search, current location, confirm).
 function pickLocation() {
   const q = S.loc.q.trim().toLowerCase(); const showList = S.loc.focus || q.length > 0;
-  const res = PLACES.map((pl, i) => [pl, i]).filter((x) => !q || (x[0].name + ' ' + x[0].sub).toLowerCase().includes(q));
+  const res = PLACES.map((pl, i): [any, number] => [pl, i]).filter((x) => !q || (x[0].name + ' ' + x[0].sub).toLowerCase().includes(q));
   const o = ctxObj(); const cur = o.place || PLACES[0];
+  // Where the 'back' button returns to.
   const back = (S.ctx && S.ctx.ret) || '#/projects/new';
   return `<div class="locgrid"><div class="card" style="align-self:stretch"><div class="head"><a class="btn sec sm" href="${back}" aria-label="Back" style="width:40px;padding:0">${ico('back', 18)}</a><h2>Set ${S.ctx && S.ctx.ctx === 'property' ? 'property' : 'project'} location</h2></div>
     <div class="sub">Search for the project, society or area — the pin snaps to it. Place it at the main gate.</div>
@@ -840,6 +864,7 @@ function pickLocation() {
 // Address picker modal (PIN-code auto-fill).
 function pickAddress() {
   const o = ctxObj(); const k = (S.ctx && S.ctx.ctx) || 'project'; const A = `d.${k}.addr.`;
+  // Where the 'back' button returns to.
   const back = (S.ctx && S.ctx.ret) || '#/projects/new';
   return page('Address details', 'Building, block and landmark — not just project and locality', btn('Cancel', { k: 'sec', href: back }) + btn('Save address', { a: 'data-act="saveAddr"' }),
     `<div class="grid2"><div class="card"><div style="display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px">${pinFill(22)}<div><b>${esc(o.place ? o.place.name : 'No pin set')}</b><div class="sub">${esc(o.place ? o.place.sub : 'Set a location first')}</div></div><div class="grow"></div><a href="#/pick/location" style="color:var(--p);font-weight:600">Change</a></div>
@@ -887,6 +912,7 @@ function propComplMonths(p) { // months from today until completion; 0 = ready; 
 function loadPropertyDraft(id) {
   const p = propById(id); if (!p) return;
   let d = p.form ? clone(p.form) : newProperty();
+  // First open of the form: no form data yet.
   if (!p.form) {
     Object.assign(d, { purpose: p.purpose, cat: p.cat, sub: (SUBTYPES[p.cat] || []).includes(p.sub) ? p.sub : SUBTYPES[p.cat][0], projectId: p.projectId, bhk: p.bhk || 3, carpet: String(p.carpet || Math.round(p.area * 0.8)), sbu: String(p.sbu || p.area), furn: p.furn === '—' ? 'Unfurnished' : p.furn, price: p.priceL ? fmtL(p.priceL).replace('₹', '') : '', quoted: p.quotedL ? fmtL(p.quotedL).replace('₹', '') : '', rent: p.rentK ? String(p.rentK * 1000) : '' });
     const st = ['Owner', 'Broker', 'Portal'].includes(p.source) ? p.source.toLowerCase() : 'owner'; d.src = { owner: st === 'owner', broker: st === 'broker', portal: st === 'portal' }; d.owner.name = p.owner && p.owner !== '—' ? p.owner : ''; d.owner.mobile = p.ownerPhone || '';
@@ -946,6 +972,7 @@ function propertyForm(edit) {
     ${R.feat ? `<div class="fld"><span class="l">Features</span>${chipMulti(P + 'features', feats, d.features)}<div style="display:flex;gap:8px;max-width:360px"><div class="inp" style="flex:1"><input id="f_d_property_fNew" data-f="d.property.fNew" placeholder="Add a feature of your own"></div>${btn('+ Add', { k: 'ghost', a: 'data-act="featAdd"' })}</div></div>` : ''}
     ${rowOf(R.furn && fld('Furnishing', P + 'furn', { opts: furnO }), R.age && fld('Year of completion', P + 'cYear', { opts: [['', 'Select year'], ...years] }), R.age && fld('Month (optional)', P + 'cMonth', { opts: [['', '—'], ...MONTHS3.map((m, i) => [String(i + 1), m])] }))}${R.age && d.cYear ? `<div class="sub">Age of the property: <b>${esc(ageTxt(d.cYear, d.cMonth))}</b></div>` : ''}
     ${R.park ? `<div class="card" style="background:var(--bg)"><h2>${K === 'warehouse' ? 'Truck &amp; vehicle parking' : 'Car parking'}</h2><div class="row"><div class="fld" style="max-width:200px"><span class="l">Number of slots</span><div style="display:flex;gap:8px"><button type="button" class="btn sec sm" data-act="stepf" data-p="d.property.pcount" data-s="-1" aria-label="Fewer">−</button><div class="inp" style="width:64px"><input data-f="d.property.pcount" data-render="1" value="${esc(d.pcount)}" inputmode="numeric" style="text-align:center"></div><button type="button" class="btn sec sm" data-act="stepf" data-p="d.property.pcount" data-s="1" aria-label="More">+</button></div></div>${Number(d.pcount) > 0 ? fld('Parking type', P + 'ptype', { opts: PARK_TYPES, style: 'max-width:240px' }) : ''}</div><small>The cost of parking goes under Price.</small></div>` : ''}`;
+  // Hint of price per sq ft, worked out from price and built-up area.
   const sqftHint = (() => { const v = parseL(d.price); const a = Number(d.sbu); return v && a ? '≈ ₹' + Math.round(v * 1e5 / a).toLocaleString('en-IN') + ' per sq ft' : ''; })();
   const com = d.cat === 'Commercial';
   const s3 = sale ? `<div class="row">${fld('Expected price (owner’s)', P + 'price', { pre: '₹', hint: sqftHint || 'As quoted by the owner' })}${fld('Quoted price', P + 'quoted', { pre: '₹', hint: 'Shown to prospects — defaults to the owner’s price' })}</div>${rowOf(!R.plot && fld('Maintenance', P + 'maint', { pre: '₹', suf: '/mo' }), R.park && fld('Parking cost', P + 'parkCost', { pre: '₹' }), fld('Brokerage', P + 'brokerage', { suf: '%' }))}<div class="row">${fld('Ownership', P + 'tenure', { opts: OWNERSHIP })}</div>${chk(d.negotiable, 'Price is negotiable', 'data-act="togb" data-p="d.property.negotiable"')}${com ? chk(d.gstOn, 'GST applicable on the sale price', 'data-act="togb" data-p="d.property.gstOn"') : ''}` : `<div class="row">${fld('Monthly rent', P + 'rent', { pre: '₹', suf: '/mo' })}${fld('Security deposit', P + 'deposit', { pre: '₹' })}</div>${rowOf(fld('Maintenance', P + 'maint', { pre: '₹', suf: '/mo' }), R.park && fld('Parking cost', P + 'parkCost', { pre: '₹', suf: '/mo' }), fld('Brokerage', P + 'brokerage', { suf: 'months' }))}<div class="row">${fld('Available from', P + 'availFrom', { type: 'date' })}${fld('Lock-in', P + 'lockin', { suf: 'months' })}</div>${d.cat === 'Residential' ? `<div class="fld"><span class="l">Preferred tenants</span>${chipMulti(P + 'tenants', TENANTS, d.tenants)}</div>` : ''}${com ? chk(d.gstOn, 'GST applicable on the rent', 'data-act="togb" data-p="d.property.gstOn"') : ''}`;
@@ -982,8 +1009,10 @@ function propertyDetail(id) {
 }
 // Properties list screen with filters, import/export buttons.
 function propertiesView() {
+  // Filters currently applied to the property list.
   const q = (S.q.props || '').toLowerCase(); const pf = S.f.props; const st = S.tab.propStatus || 'all'; const cat = S.tab.propCat || 'all'; const so = S.tab.propSort || 'newest'; const within = Number(S.tab.within) || 0;
   let rows = S.props.filter((p) => (pf === 'all' || p.purpose === pf) && (cat === 'all' || p.cat === cat) && (st === 'all' || (st === 'done' ? ['Sold', 'Rented/Leased'].includes(p.status) : p.status === st)) && (!q || (p.id + p.title + p.loc + p.owner).toLowerCase().includes(q)) && (!within || (() => { const m = propComplMonths(p); return m !== null && m <= within; })()));
+  // Price used for sorting: sale price, otherwise monthly rent.
   const pv = (p) => (p.purpose === 'sale' ? p.priceL : p.rentK) || 0;
   rows = rows.slice(); if (so === 'newest') rows.reverse(); else if (so === 'price_asc') rows.sort((a, b) => pv(a) - pv(b)); else if (so === 'price_desc') rows.sort((a, b) => pv(b) - pv(a)); else if (so === 'area') rows.sort((a, b) => b.area - a.area);
   const nd = S.props.filter((p) => p.status === 'Draft').length;
@@ -994,7 +1023,7 @@ function propertiesView() {
 
 // Filtered and sorted property rows for the list.
 function ptRows(f) {
-  const K = ptKind(f.cat, f.sub); const R = PT[K]; const o = []; const add = (k, v, suf) => { if (v !== '' && v != null && v !== false) o.push([k, esc(v) + (suf || '')]); };
+  const K = ptKind(f.cat, f.sub); const R = PT[K]; const o = []; const add = (k, v, suf?) => { if (v !== '' && v != null && v !== false) o.push([k, esc(v) + (suf || '')]); };
   if (R.baths) add('Bathrooms', f.baths); if (R.wash) add('Washrooms', f.washrooms); if (R.floor) { add('Floor', f.floor); add('Total floors', f.totalFloors); } if (R.floors) add('Floors', f.totalFloors); if (R.balc) add('Balconies', f.balconies); if (R.lift) add('Lift', f.lift);
   if (R.seats) add('Workstations / cabins', f.seats); if (R.front) add('Frontage', f.frontage, ' ft'); if (R.ht) add('Ceiling height', f.ceilHt, ' ft'); if (R.docks) add('Loading docks', f.docks); if (R.power) add('Power load', f.powerKva, ' kVA'); if (R.plotA) add('Plot area', f.plotArea, ' sq ft');
   if (R.plot) { if (f.plotL && f.plotW) add('Plot size', f.plotL + ' × ' + f.plotW, ' ft'); add('Road width', f.road, ' ft'); add('Land use', f.landUse); add('Boundary wall', f.wall); if (f.corner) o.push(['Corner plot', 'Yes']); }
@@ -1050,6 +1079,7 @@ function matchesView() {
   const pf = S.f.matches; const all = pendingReqs(); const list = all.filter((r) => pf === 'all' || r.purpose === pf);
   if (!list.find((r) => r.id === S.tab.matchReq)) S.tab.matchReq = list[0] ? list[0].id : null;
   const r = list.find((x) => x.id === S.tab.matchReq); const sel = S.tab.matchSel || []; const ms = r ? matchesFor(r) : [];
+  // Budget range text for a requirement (sale shows lakhs/crores, rent shows monthly).
   const rangeTxt = (x) => (x.purpose === 'sale' ? fmtL(x.min) + '–' + fmtL(x.max) : fmtRent(x.min) + '–' + fmtRent(x.max));
   return page('Matches', r ? ms.length + ' properties · best ' + (ms[0] ? ms[0].score : 0) + '%' : 'No requirement', btn('Share selected', { k: 'ghost', a: 'data-act="shareSel"' }) + btn('Schedule visit', { a: 'data-act="visitSel"' }),
     `<div class="note">${ico('info', 18)}<div>Matching runs on <b>properties</b> against every pending requirement — prospects and leads, qualified or not.</div></div><div class="head">${purposeSeg('matches')}<div class="inp sel" style="min-width:300px"><select id="mreq" data-f="tab.matchReq" data-render="1" aria-label="Requirement">${list.map((x) => `<option value="${x.id}" ${x.id === S.tab.matchReq ? 'selected' : ''}>${esc(reqWho(x))} (${reqTag(x).toLowerCase()}) · ${PURPOSE[x.purpose]}${x.bhk ? ' · ' + x.bhk + ' BHK' : ''}</option>`).join('')}</select></div></div>
@@ -1082,6 +1112,7 @@ function leadDetail(id) {
 function prospectsView() {
   const st = S.f.prospects; const q = (S.q.prospects || '').toLowerCase();
   const rows = S.prospects.filter((c) => (st === 'all' || (st === 'nri' ? c.nri : c.type === st)) && (!q || c.name.toLowerCase().includes(q)));
+  // Count of prospects of one type.
   const cnt = (t) => S.prospects.filter((c) => c.type === t).length;
   return page('Prospects', S.prospects.length + ' prospects · ' + cnt('Buyer') + ' buyers · ' + cnt('Tenant') + ' tenants · ' + cnt('Owner') + ' owners', (canA('import') ? btn('Import', { k: 'sec', a: 'data-act="importFor" data-k="prospects"' }) : '') + btn('Add prospect', { i: 'plus', a: 'data-act="openModal" data-m="prospect"' }),
     `<div class="head">${searchBox('q.prospects', 'Name, phone, email')}<div class="chips">${[['all', 'All'], ['Buyer', 'Buyers'], ['Tenant', 'Tenants'], ['Owner', 'Owners'], ['nri', 'NRI']].map((x) => chip(x[1], st === x[0], `data-act="filt" data-k="prospects" data-v="${x[0]}"`)).join('')}</div></div>
@@ -1089,6 +1120,7 @@ function prospectsView() {
 }
 // Modal for sharing selected properties with a prospect (WhatsApp/email).
 function shareModal(m, wrap, cancel, D) {
+  // Property ids chosen for a match share, and their documents.
   const ids = (m.ids || '').split(',').filter(Boolean); const docs = ids.flatMap((pid) => filesOf('prop:' + pid).filter((f) => f.share).map((f) => ({ pid, f })));
   const to = D.shareTo || ''; const c = prosById(to); const noWa = c && c.waOk === false;
   return wrap('Share properties', `<div class="sub">${ids.length} selected: ${esc(ids.join(', ') || 'none')}</div>${fld('Send to', 'd.shareTo', { opts: [['', 'Choose a prospect…'], ...S.prospects.map((x) => [x.id, x.name])], rer: 1 })}${noWa ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>${esc(c.name)}’s number is flagged as <b>not on WhatsApp</b>. Send by email instead, or update the number.</div></div>` : ''}
@@ -1143,6 +1175,7 @@ function visitsFiltered() { const st = S.tab.visitStatus || 'all', pf = S.f.visi
 // Arrange overlapping events into side-by-side lanes on the calendar.
 function laneLayout(evs) {
   const out = []; let cl = [], end = 0;
+  // Close the current group of overlapping calendar events: every event in it shares the same number of lanes.
   const flush = () => { const n = Math.max(1, ...cl.map((c) => c.lane + 1)); cl.forEach((c) => { c.lanes = n; }); out.push(...cl); cl = []; end = 0; };
   evs.forEach((v) => { const s = mins(v.time), e = s + (v.dur || 45); if (cl.length && s >= end) flush(); let lane = 0; while (cl.some((c) => c.lane === lane && c.e > s)) lane++; cl.push({ v, s, e, lane }); end = Math.max(end, e); });
   flush(); return out;
@@ -1196,6 +1229,7 @@ function visitDetail(id) {
 // Follow-ups screen.
 function followupsView() {
   const tab = S.tab.fu || 'today'; const pf = S.f.fus || 'all';
+  // Follow-ups for a tab: done ones, or the open ones matching the person filter.
   const items = (k) => S.fus.filter((f) => (pf === 'all' || f.p === pf) && (k === 'done' ? f.done : !f.done && f.due === k));
   const list = items(tab);
   return page('Follow-ups', 'Your personal task list for leads and prospects', btn('Add follow-up', { i: 'plus', a: 'data-act="openModal" data-m="fu"' }),
@@ -1216,7 +1250,7 @@ const dealPurpose = (d) => (d.kind === 'sale' ? 'sale' : 'rent');
 // Format a deal amount according to its kind.
 const dealPriceTxt = (d, v) => (d.kind === 'sale' ? fmtL(Number(v)) : fmtRent(Number(v)));
 // Whole days between two yyyy-mm-dd dates.
-const daysBetween = (a, b) => Math.round((parseISO(b) - parseISO(a)) / 86400000);
+const daysBetween = (a, b) => Math.round((+parseISO(b) - +parseISO(a)) / 86400000);
 // Is the deal still open (not won/lost)?
 const isOpen = (d) => !['closed_won', 'lost'].includes(d.stage);
 // Open deal with no update for more than 7 days.
@@ -1244,10 +1278,10 @@ const leaseExpiring = (d, n) => d.kind !== 'sale' && d.stage === 'closed_won' &&
 // Total contract value (rent x tenure for rentals).
 const totalAmt = (d) => (d.kind === 'sale' ? cp(d) * 1e5 : cp(d) * 1e3 * (Number(d.tenure) || 0));
 // Append an entry to a deal's timeline.
-const mlog = (d, t, at, by) => { d.timeline.push({ t, by: by || ME().name, at: at || iso(today), seq: d.timeline.length + 100 }); d.upd = iso(today); };
+const mlog = (d, t, at?, by?) => { d.timeline.push({ t, by: by || ME().name, at: at || iso(today), seq: d.timeline.length + 100 }); d.upd = iso(today); };
 // Build the starting timeline from a deal's data.
 function genTimeline(d, c) {
-  const tl = []; let n = 0; const sale = d.kind === 'sale'; const add = (t, at, by, k) => { if (at) tl.push({ t, by: by || d.openedBy, at, seq: n++, k }); };
+  const tl = []; let n = 0; const sale = d.kind === 'sale'; const add = (t, at?, by?, k?) => { if (at) tl.push({ t, by: by || d.openedBy, at, seq: n++, k }); };
   const ld = S.leads.find((l) => c && l.name === c.name);
   if (ld) add('Lead created · ' + ld.source, iso(addDays(parseISO(d.created), -7)), ld.assigned);
   add('Deal created — ask ' + dealPriceTxt(d, d.ask), d.created);
@@ -1279,6 +1313,7 @@ function initDeal(d) {
   if (d.bid == null) d.bid = (d.offers.filter((o) => o.by === 'buyer').slice(-1)[0] || {}).amt || d.close || '';
   if (d.stage !== 'negotiation' && d.stage !== 'lost' && !d.agreedOn) d.agreedOn = normDate(d.token.date) || d.stageSince;
   if (!sale) { d.tenure = d.tenure == null ? 11 : d.tenure; d.depMonths = d.depMonths == null ? 2 : d.depMonths; d.renewals = d.renewals || []; d.rem = d.rem || { days: [60, 30], to: { tenant: true, owner: true, team: true } }; if (d.leaseStart && !d.leaseEnd) d.leaseEnd = leaseEndOf(d.leaseStart, d.tenure); }
+  // Deal has no document checklist yet.
   if (!d.docs) {
     d.docs = (sale ? DOCS_SALE : DOCS_RENT).map((x) => ({ name: x[0], who: x[1], st: 'Pending', req: '', rec: '' }));
     const mark = (n, st) => { const x = d.docs.find((y) => y.name === n); if (x) x.st = st; };
@@ -1287,6 +1322,7 @@ function initDeal(d) {
     if (d.stage !== 'negotiation') { mark('KYC — buyer', 'Verified'); mark('KYC — tenant', 'Verified'); }
     if (d.stage === 'closed_won' && !sale) { mark('Security deposit receipt', 'Verified'); mark('KYC — landlord', 'Verified'); mark('Police verification', 'Received'); }
   }
+  // Deal has no payment schedule yet.
   if (!d.sched) {
     if (sale) { const base = cp(d) * 1e5; const tk = Number(String(d.token.amt || '').replace(/[^0-9]/g, '')) || Math.round(base * 0.01); const ag = Math.round(base * 0.1); d.sched = [{ k: 'token', label: 'Token amount', amt: tk, due: 'On token', paid: !!d.token.on }, { k: 'agr', label: 'On agreement (10% of price)', amt: ag - tk > 0 ? ag - tk : ag, due: 'On agreement', paid: !!d.agr.on }, { k: 'reg', label: 'Balance on registration', amt: base - ag, due: 'On registration', paid: !!d.reg.on }]; }
     else { d.sched = [{ k: 'deposit', label: 'Security deposit', amt: 0, due: 'Before move-in', paid: d.stage === 'closed_won' }, { k: 'rent1', label: 'First month rent', amt: 0, due: 'Before move-in', paid: d.stage === 'closed_won' }]; }
@@ -1301,17 +1337,18 @@ function initDeal(d) {
   d.prob = PROB[d.stage];
 }
 // Mark a deal as updated today.
-const dlog = (d) => { d.upd = iso(today); };
+const dlog = (d, _text?) => { d.upd = iso(today); };
 // Document completion percentage for a deal.
 function docsProgress(d) { const rel = d.docs.filter((x) => x.st !== 'Not applicable'); const done = rel.filter((x) => ['Received', 'Verified'].includes(x.st)).length; return { done, total: rel.length, pct: rel.length ? Math.round(done / rel.length * 100) : 0 }; }
 // Thin progress bar.
-const bar = (pct, k) => `<span style="display:block;height:6px;background:var(--line2);border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:${k || 'var(--p)'}"></span></span>`;
+const bar = (pct, k?) => `<span style="display:block;height:6px;background:var(--line2);border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:${k || 'var(--p)'}"></span></span>`;
 
 // Deals screen: board/list with stage filters and totals.
 function dealsView() {
   const pf = S.f.deals; const q = (S.q.deals || '').toLowerCase(); const vw = S.tab.dealView || 'board'; const who = S.tab.dealWho || 'all';
   const ds = S.deals.filter((d) => (pf === 'all' || dealPurpose(d) === pf) && (who === 'all' || d.openedBy === who || d.closedBy === who) && (!q || (d.id + prosById(d.cid).name + propLabel(propById(d.prop))).toLowerCase().includes(q)));
   const open = ds.filter(isOpen); const lost = ds.filter((d) => d.stage === 'lost'); const won = ds.filter((d) => d.stage === 'closed_won');
+  // True when the deal closed in the current month.
   const thisMonth = (d) => d.closedOn && d.closedOn.slice(0, 7) === iso(today).slice(0, 7);
   const sv = open.filter((d) => d.kind === 'sale').reduce((a, d) => a + dealValue(d), 0); const rv = open.filter((d) => d.kind !== 'sale').reduce((a, d) => a + dealValue(d), 0);
   const pot = open.reduce((a, d) => a + brokTotal(d), 0); const wpot = open.reduce((a, d) => a + brokTotal(d) * PROB[d.stage] / 100, 0);
@@ -1322,7 +1359,9 @@ function dealsView() {
   const tiles = [['Open deals', open.length, open.filter((d) => d.kind === 'sale').length + ' sale · ' + open.filter((d) => d.kind !== 'sale').length + ' rent/lease'], ['Pipeline value', (sv ? rupeesM(sv) : '—'), rv ? '+ ' + inr(rv) + '/mo rentals' : 'Sale deals only'], ['Potential brokerage', rupeesM(pot), 'Weighted ' + rupeesM(Math.round(wpot))], ['Won this month', wonM.length, rupeesM(wonBrok) + ' brokerage']];
   const watch = [[soon, 'sales closing in 30 days'], [exp, 'leases ending in 60 days'], [open.filter(isStale).length, 'stale (7+ days)'], [rate + '%', 'win rate · ' + won.length + ' won, ' + lost.length + ' lost']];
   const cols = STAGE_ORDER.concat('lost');
+  // Date caption shown on a deal card.
   const dateLine = (d) => (d.stage === 'closed_won' ? (d.kind === 'sale' ? 'Closed ' + dayLbl(parseISO(d.closedOn || d.expected)) : 'Lease ' + (d.leaseStart ? dstr(parseISO(d.leaseStart)) : '—') + ' → ' + (d.leaseEnd ? dstr(parseISO(d.leaseEnd)) : '—')) : d.kind === 'sale' ? 'Day ' + stageDays(d) + ' in stage · closes ' + dayLbl(parseISO(d.expected)) : 'Day ' + stageDays(d) + ' in stage · ' + (d.leaseStart ? 'lease from ' + dstr(parseISO(d.leaseStart)) : 'lease dates not set'));
+  // One deal card in the pipeline board.
   const cardOf = (d) => { const dp = docsProgress(d); return `<div class="kcard" data-href="#/deals/${d.id}" style="cursor:pointer"><div class="head" style="gap:6px"><span class="mono sub" style="font-size:11px">${d.id}</span><div class="grow"></div>${isStale(d) ? badge('Stale', 'warn') : ''}${d.stage !== 'closed_won' ? badge(PROB[d.stage] + '%') : ''}${rowActs('deal', d.id)}</div><b>${esc(prosById(d.cid).name)}</b><div class="sub" style="font-size:12px">${propLabel(propById(d.prop))}</div><div class="head" style="gap:6px">${badge(d.kind === 'sale' ? 'Sale' : 'Rent/Lease', d.kind === 'sale' ? '' : 'blue')}<b>${dealPriceTxt(d, cp(d))}</b></div><div class="sub" style="font-size:12px">Brokerage ${inr(brokTotal(d))} · ${esc(d.openedBy.split(' ')[0])}${d.closedBy !== d.openedBy ? ' → ' + esc(d.closedBy.split(' ')[0]) : ''}</div><div style="display:flex;align-items:center;gap:8px"><span style="flex:1">${bar(dp.pct, dp.pct === 100 ? 'var(--ok)' : 'var(--p)')}</span><span class="sub" style="font-size:11px">Docs ${dp.done}/${dp.total}</span></div><div class="sub" style="font-size:11px">${dateLine(d)}</div>${d.stage === 'lost' ? `<div class="sub" style="font-size:12px;color:var(--err)">${esc(d.lostReason)}${d.lostFrom && d.lostFrom !== 'negotiation' ? ' · lost at ' + esc(STAGE_LABEL[d.lostFrom]) : ''}</div><button type="button" class="btn sec sm" data-act="reopenDeal" data-id="${d.id}">Reopen</button>` : ''}</div>`; };
   const board = `<div class="kan">${cols.map((c) => { const cs = ds.filter((d) => d.stage === c); const val = cs.reduce((a, d) => a + (d.kind === 'sale' ? dealValue(d) : 0), 0); const br = cs.reduce((a, d) => a + brokTotal(d), 0); return `<div class="kcol${c === 'lost' ? ' kbad' : ''}"><div class="head" style="padding:2px 4px"><b style="${c === 'lost' ? 'color:var(--err)' : ''}">${c === 'lost' ? 'Closed Lost' : STAGE_LABEL[c]}</b><div class="grow"></div><span class="sub">${cs.length}</span></div>${c === 'agreed' ? '<div class="sub" style="font-size:11px;padding:0 4px">Terms agreed — awaiting token</div>' : ''}${c === 'lost' ? '' : `<div class="sub" style="font-size:11px;padding:0 4px">${val ? rupeesM(val) + ' · ' : ''}Brokerage ${rupeesM(br)}</div>`}${cs.map(cardOf).join('') || '<div class="sub" style="padding:8px">—</div>'}</div>`; }).join('')}</div>`;
   const listRows = ds.filter((d) => d.stage !== 'lost').sort((a, b) => a.expected.localeCompare(b.expected));
@@ -1336,7 +1375,7 @@ function dealsView() {
     ${insight}`);
 }
 // Lease-specific form fields (tenure, lock-in, deposit...).
-function leaseFields(P, d, hasId) {
+function leaseFields(P, d, hasId?) {
   const dm = Number(d.depMonths) || 0; const rent = (Number(d.close) || Number(d.bid) || Number(d.ask) || 0) * 1000;
   return `<div class="card" style="background:var(--bg)"><h2>Lease term</h2><div class="row">${fld('Lease start', P + 'leaseStart', { type: 'date', rer: 1 })}${fld('Tenure', P + 'tenure', { suf: 'months', rer: 1, hint: 'e.g. 11 months' })}${fld('Lease end', P + 'leaseEnd', { type: 'date', rer: 1, hint: 'Calculated from start + tenure — you can edit it' })}</div>
   <div class="row">${fld('Security deposit', P + 'depMonths', { suf: 'months of rent', rer: 1, hint: 'Suggested 2 months — change it for each deal' })}<div class="fld"><span class="l">Deposit amount</span><div class="inp" style="background:var(--line2)"><span class="pre">₹</span><input value="${rent ? Math.round(rent * dm).toLocaleString('en-IN') : '—'}" readonly aria-label="Deposit amount"></div><small>Editable on the deal after it is created</small></div></div></div>`;
@@ -1361,6 +1400,7 @@ _doc.addEventListener('click', (e) => { const k = e.target.closest && e.target.c
 // Reminder schedule text for payments.
 function remSchedule(d) {
   const end = d.leaseEnd; if (!end) return [];
+  // Reminder settings: days before due, and who is notified.
   const days = (d.rem.days || []).slice().sort((a, b) => b - a); const to = d.rem.to || {};
   const who = [['tenant', 'tenant'], ['owner', 'owner / landlord'], ['team', 'internal team']].filter((x) => to[x[0]]);
   return days.map((n) => { const at = iso(addDays(parseISO(end), -n)); const diff = daysBetween(iso(today), at); return { n, at, diff, who: who.map((x) => x[1]) }; });
@@ -1376,11 +1416,13 @@ function dealDetail(id) {
   const negFail = d.stage === 'lost' && lostAt <= 0;
   const tracker = `<div class="stp">${STAGE_ORDER.map((s, k) => { let st = ''; if (d.stage === 'lost') st = k < lostAt ? 'done' : k === lostAt ? 'bad' : 'lock'; else if (k < sidx || d.stage === 'closed_won') st = 'done'; else if (k === sidx) st = 'cur'; else st = 'lock'; return `<div class="${st}"><i>${st === 'done' ? '✓' : st === 'bad' ? '✗' : k + 1}</i><span>${k === 0 && negFail ? 'Closed Lost' : (s === 'registration' ? (sale ? 'Registration' : 'Notarization') : stageLbl(d, s))}</span></div>`; }).join('')}</div>`;
   const decision = d.stage === 'negotiation' ? `<div class="decide"><div><b>Negotiation in progress</b><div class="sub">Log offers on the Offers tab. When the talks end, record the outcome — the next steps open only if it is successful.</div></div><div class="dbtns"><button type="button" class="btn lg" data-act="openModal" data-m="agree" data-id="${d.id}">${ico('check', 18)} Negotiation successful</button><button type="button" class="btn danger lg" data-act="openModal" data-m="lost" data-id="${d.id}">${ico('close', 18)} Mark as Closed Lost</button></div></div>` : d.stage === 'lost' ? `<div class="decide bad"><div><b>${negFail ? 'Closed Lost' : 'Deal lost'}</b><div class="sub">${esc(d.lostReason || '')}${d.lostOn ? ' · ' + esc(dateTxt(d.lostOn)) : ''}</div></div><div class="dbtns"><button type="button" class="btn sec" data-act="reopenDeal" data-id="${d.id}">Reopen deal</button></div></div>` : '';
-  const msRow = (k, label, amt) => `<div class="mrow">${chk(d[k].on, `<b>${label}</b>`, `data-act="dealTog" data-i="${i}" data-k="${k}" ${closed ? 'disabled' : ''}`)}${amt ? `<div style="width:150px">${fld('', `deals.${i}.${k}.amt`, { pre: '₹', aria: 'Token amount' })}</div>` : ''}<div style="width:160px">${fld('', `deals.${i}.${k}.date`, { type: 'date', aria: label + ' date' })}</div><div style="flex:1;min-width:160px">${fld('', `deals.${i}.${k}.note`, { ph: 'Note (optional)', aria: label + ' note' })}</div></div>`;
+  // One milestone row (token / agreement / registration) with its checkbox and optional amount.
+  const msRow = (k, label, amt?) => `<div class="mrow">${chk(d[k].on, `<b>${label}</b>`, `data-act="dealTog" data-i="${i}" data-k="${k}" ${closed ? 'disabled' : ''}`)}${amt ? `<div style="width:150px">${fld('', `deals.${i}.${k}.amt`, { pre: '₹', aria: 'Token amount' })}</div>` : ''}<div style="width:160px">${fld('', `deals.${i}.${k}.date`, { type: 'date', aria: label + ' date' })}</div><div style="flex:1;min-width:160px">${fld('', `deals.${i}.${k}.note`, { ph: 'Note (optional)', aria: label + ' note' })}</div></div>`;
   const dealTasks = `<h2>Next actions</h2>${d.tasks.map((t, k) => `<div style="display:flex;gap:8px;align-items:center">${chk(t.done, `<span style="${t.done ? 'text-decoration:line-through;color:var(--muted)' : ''}">${esc(t.t)}</span>`, `data-act="taskTog" data-i="${i}" data-k="${k}"`)}<div class="grow"></div>${!t.done && t.due < iso(today) ? badge('Overdue', 'err') : ''}<span class="sub" style="font-size:12px">${esc(dayLbl(parseISO(t.due)))}</span></div>`).join('') || '<div class="sub">No tasks yet.</div>'}<div class="head"><div class="inp grow"><input id="f_d_task_t" data-f="d.task.t" value="${esc(S.d.task.t)}" placeholder="Add a task…"></div><div class="inp" style="width:150px"><input type="date" data-f="d.task.due" value="${esc(S.d.task.due)}" aria-label="Task due date"></div>${btn('Add', { k: 'ghost', a: `data-act="taskAdd" data-i="${i}"` })}</div>`;
   const tn = sale ? 'Buyer' : 'Tenant', on = sale ? 'Owner' : 'Landlord';
   const leaseLine = !sale ? ['Lease term', d.leaseStart ? `${esc(dateTxt(d.leaseStart))} → ${esc(dateTxt(d.leaseEnd))} <span class="sub">· ${Number(d.tenure) || 0} months</span>` : '<span class="sub">Not set yet — add it under Lease &amp; renewal</span>'] : null;
 
+  // Two-column key/value block.
   const kv2 = (rows) => `<div class="kv2">${rows.map(([k, v]) => `<div><small>${k}</small><span>${v}</span></div>`).join('')}</div>`;
   const overview = `<div class="grid2"><div class="stack">
     ${card(`<h2>Deal details</h2>${kv2([[tn, `<a href="#/prospects/${c.id}" style="color:var(--p)">${esc(c.name)}</a>`], [on, esc(p.owner || '—')], ['Property', `<a href="#/properties/${p.id}" style="color:var(--p)">${propLabel(p)}</a>`], [sale ? 'Address' : 'Premises', esc(p.unit) + ' · ' + esc(p.loc)], ['Ask', dealPriceTxt(d, d.ask)], ['Bid', dealPriceTxt(d, d.bid)], ['Closing price', d.close ? '<b>' + dealPriceTxt(d, d.close) + '</b>' : '<span class="sub">Set when terms are agreed</span>'], [sale ? 'Total amount' : 'Total rent for term', totalAmt(d) ? '<b>' + inr(totalAmt(d)) + '</b>' : '—'], ...(leaseLine ? [leaseLine] : []), ['Lead source', esc(c.source) + ' → ' + esc(p.source)], ['Brokerage', 'Total <b>' + inr(b.buyer + b.owner) + '</b> · ' + tn.toLowerCase() + ' ' + inr(b.buyer) + ' · ' + on.toLowerCase() + ' ' + inr(b.owner)]])}
@@ -1400,7 +1442,7 @@ function dealDetail(id) {
   const payT = `<div class="grid2">${card(`<div class="head"><h2>${sale ? 'Payment schedule' : 'Move-in payments'}</h2><div class="grow"></div>${badge(inr(paid) + ' of ' + inr(totalS), paid >= totalS ? 'ok' : 'blue')}</div>${bar(totalS ? Math.round(paid / totalS * 100) : 0)}<div class="list" style="margin:0 -20px -20px">${d.sched.map((x, k) => `<div class="li"><div class="grow"><b>${esc(x.label)}</b><div class="sub" style="font-size:12px">${esc(x.due)}</div></div><b>${inr(x.amt)}</b>${x.paid ? badge('Paid', 'ok') : badge('Due', 'warn')}${btn(x.paid ? 'Undo' : 'Mark paid', { k: 'ghost sm', a: `data-act="schedTog" data-i="${i}" data-k="${k}"` })}</div>`).join('')}</div>${sale ? '' : '<div class="sub" style="font-size:12px;margin-top:14px">The deposit months and amount are set on the Lease &amp; renewal tab.</div>'}`)}
     ${sale ? card(`<div class="head"><h2>Home loan</h2><div class="grow"></div>${chk(L.required, 'Loan required', `data-act="togb" data-p="deals.${i}.loan.required"`)}</div>${L.required ? `<div class="step">${loanSteps.map((s, k) => { const li = loanSteps.indexOf(L.stage); return `<button type="button" data-act="setf" data-p="deals.${i}.loan.stage" data-v="${s}" style="text-align:left;border:1px solid ${s === L.stage ? (s === 'Rejected' ? 'var(--err)' : 'var(--p-line)') : 'var(--line)'};background:${s === L.stage ? (s === 'Rejected' ? 'var(--err-soft)' : 'var(--p-soft)') : k < li && L.stage !== 'Rejected' ? 'var(--ok-soft)' : 'var(--surface)'};border-radius:8px;padding:10px 12px;font-size:13px;font-weight:${s === L.stage ? 600 : 500};min-width:100px">${s}</button>`; }).join('')}</div><div class="row">${fld('Bank', `deals.${i}.loan.bank`, { opts: ['', 'HDFC Bank', 'SBI', 'ICICI Bank', 'Axis Bank', 'LIC Housing', 'Other'] })}${fld('Loan amount', `deals.${i}.loan.amt`, { pre: '₹' })}</div><div class="row">${fld('Applied on', `deals.${i}.loan.applied`, { type: 'date' })}${fld('Sanctioned on', `deals.${i}.loan.sanctioned`, { type: 'date' })}${fld('Disbursed on', `deals.${i}.loan.disbursed`, { type: 'date' })}</div>${fld('Bank contact', `deals.${i}.loan.contact`, { ph: 'Name · phone' })}<div class="sub" style="font-size:12px">Tracks loan status only — no financial advice is given here.</div>` : '<div class="sub">Turn this on if the buyer is taking a home loan to track sanction and disbursement.</div>'}`) : card('<h2>Home loan</h2><div class="sub">Not applicable for a Rent/Lease deal.</div>')}</div>`;
   const partT = card(`<div class="head"><h2>Parties &amp; contacts</h2><div class="grow"></div>${btn('Add party', { k: 'ghost sm', i: 'plus', a: `data-act="openModal" data-m="party" data-id="${d.id}"` })}</div><div class="list" style="margin:0 -20px -20px">${d.parties.map((x, k) => `<div class="li"><div class="av">${initials(x.name)}</div><div class="grow"><b>${esc(x.name)}</b><div class="sub">${esc(x.role)} · ${esc(x.phone)}</div></div>${btn('Call', { k: 'ghost sm callbtn', i: 'phone', a: `data-act="toast" data-t="Calling ${esc(x.name)}…"` })}${btn('WhatsApp', { k: 'ghost sm', i: 'chat', a: `data-act="toast" data-t="Opening WhatsApp…"` })}${k > 1 ? btn('Remove', { k: 'sec sm', a: `data-act="partyRm" data-i="${i}" data-k="${k}"` }) : ''}</div>`).join('')}</div><div class="sub" style="font-size:12px;margin-top:14px">Calling is available in the mobile app. On a computer, use WhatsApp.</div>`);
-  const tb = bk || (() => { const t = { deal: d.id, due: iso(addDays(parseISO(d.agreedOn || iso(today)), 30)), pay: [] }; initBrok(t); return t; })(); const ts = brokState(tb);
+  const tb: Rec = bk || (() => { const t = { deal: d.id, due: iso(addDays(parseISO(d.agreedOn || iso(today)), 30)), pay: [] }; initBrok(t); return t; })(); const ts = brokState(tb);
   const bi = S.brok.indexOf(bk);
   const brT = `<div class="grid2">${card(`<h2>Brokerage terms</h2><div class="seg" style="align-self:flex-start">${[['%', '% of price'], ['fixed', 'Fixed value']].map((x) => `<button type="button" class="${d.bType === x[0] ? 'on' : ''}" data-act="setf" data-p="deals.${i}.bType" data-v="${x[0]}">${x[1]}</button>`).join('')}</div><div class="row">${fld(sale ? 'From buyer' : 'From tenant', `deals.${i}.bBuyer`, { suf: d.bType === '%' ? '%' : '₹', rer: 1 })}${fld(sale ? 'From owner' : 'From landlord', `deals.${i}.bOwner`, { suf: d.bType === '%' ? '%' : '₹', rer: 1 })}</div>${kv([['Base amount', dealPriceTxt(d, cp(d))], ['From ' + tn.toLowerCase(), inr(b.buyer)], ['From ' + on.toLowerCase(), inr(b.owner)], ['Total (before GST)', '<b>' + inr(b.buyer + b.owner) + '</b>'], ['GST', ts.gst ? inr(ts.gst) + ' <span class="sub">(on for ' + ts.sides.filter((x) => x.gst).map((x) => (x.k === 'buyer' ? tn : on).toLowerCase()).join(' &amp; ') + ')</span>' : '<span class="sub">Not applied</span>']])}<div class="sub" style="font-size:12px">GST is optional. Switch it on per party below — it is not applied by default.</div>${ts.sides.map((x) => `<div class="head">${chk(x.gst > 0 || (tb.gst && tb.gst[x.k]), 'GST on ' + (x.k === 'buyer' ? tn : on).toLowerCase() + '’s brokerage @' + (tb.gstPct || 18) + '%', `data-act="gstTog" data-deal="${d.id}" data-side="${x.k}"`)}</div>`).join('')}`)}
     ${card(`<div class="head"><h2>Brokerage payments</h2><div class="grow"></div>${btn('Record payment', { i: 'plus', a: `data-act="dealPay" data-id="${d.id}"` })}</div><div class="figs">${[['Total due', inr(ts.tot)], ['Collected', inr(ts.rec)], ['Pending', inr(ts.pend)]].map((f) => `<div class="fig"><small>${f[0]}</small><b>${f[1]}</b></div>`).join('')}</div><div class="list" style="margin:0 -20px">${tb.pay.map((x) => `<div class="li"><div class="grow"><b>${inr(x.amt)}</b> · from ${x.from === 'buyer' ? tn.toLowerCase() : on.toLowerCase()}<div class="sub" style="font-size:12px">${esc(dateTxt(x.date))} · ${esc(x.mode)} · Ref ${esc(x.ref || '—')}${x.note ? ' · ' + esc(x.note) : ''}</div></div></div>`).join('') || '<div class="li sub">No payments recorded yet.</div>'}</div><div class="sub" style="font-size:12px">Payments recorded here feed the collected, pending and overdue totals on the Brokerage page.</div>${bk ? btn('Open full brokerage (invoice, contribution split)', { k: 'sec', href: '#/brokerage/' + d.id, c: 'full' }) : ''}`)}</div>`;
@@ -1418,8 +1460,11 @@ function dealDetail(id) {
   const actT = card(`<h2>Activity</h2><div class="sub" style="margin-top:-6px">Major milestones only — lead and deal creation, stage changes, lease commencement and payments. Calls, messages and visits live in the lead’s own activity.</div><div class="list" style="margin:0 -20px -20px">${evs.map((t) => `<div class="li"><div class="grow">${esc(t.t)}<div class="sub" style="font-size:12px">${t.by && t.by !== '—' ? 'by ' + esc(t.by) : ''}</div></div><span class="sub">${esc(dateTxt(t.at))}</span></div>`).join('')}</div>`);
   const body = { overview, offers: offersT, docs: docsT, pay: payT, parties: partT, brok: brT, lease: leaseT, act: actT }[tab];
   const tabs = [['overview', 'Overview'], ['offers', 'Offers ' + d.offers.length], ['docs', 'Documents ' + dp.done + '/' + dp.total], ['pay', 'Payments & loan'], ...(sale ? [] : [['lease', 'Lease & renewal']]), ['parties', 'Parties ' + d.parties.length], ['brok', 'Brokerage'], ['act', 'Activity']];
+  // Action buttons shown for the deal's current stage.
   const acts = (d.stage === 'negotiation' ? '' : isOpen(d) ? btn(sale ? 'Close deal · mark Sold' : 'Close deal · mark Leased Out', { a: `data-act="openModal" data-m="sold" data-id="${d.id}"` }) : '') + (d.stage === 'closed_won' ? btn('Brokerage', { k: 'ghost', href: '#/brokerage/' + d.id }) : '');
+  // Hint text telling the user what the next step is.
   const needs = (d.stage === 'negotiation' ? 'Next: agree terms' : d.stage === 'agreed' ? 'Next: collect token' : d.stage === 'token' ? 'Next: sign agreement' : d.stage === 'agreement' ? 'Next: ' + (sale ? 'registration' : 'notarization') : '');
+  // One headline figure (label, value, sub-text).
   const fig = (k, v, s) => `<div class="fig"><small>${k}</small><b>${v}</b>${s ? `<span class="sub" style="font-size:11px">${s}</span>` : ''}</div>`;
   const keyfigs = `<div class="figs kf">${fig(sale ? 'Deal value' : 'Monthly rent', d.close ? dealPriceTxt(d, d.close) : dealPriceTxt(d, d.bid || d.ask), d.close ? 'Closing price' : 'Not agreed yet')}${fig('Brokerage', inr(b.buyer + b.owner), 'Collected ' + inr(ts.rec))}${fig(sale ? 'Expected closing' : 'Lease term', sale ? (d.expected ? esc(dateTxt(d.expected)) : '—') : (d.leaseStart ? esc(dateTxt(d.leaseStart)) + ' → ' + esc(dateTxt(d.leaseEnd)) : 'Not set'), isOpen(d) ? 'Likelihood ' + PROB[d.stage] + '%' : '')}${fig('Documents', dp.done + ' / ' + dp.total, dp.pct + '% complete')}</div>`;
   const head = `<div class="card"><div class="head">${badge(d.stage === 'lost' ? (negFail ? 'Closed Lost' : 'Lost') : stageLbl(d, d.stage), d.stage === 'closed_won' ? 'ok' : d.stage === 'lost' ? 'err' : 'blue')}${badge(sale ? 'Sale' : 'Rent/Lease', sale ? '' : 'blue')}${isStale(d) ? badge('Stale · ' + daysBetween(d.upd, iso(today)) + ' days', 'warn') : ''}<div class="grow"></div>${isOpen(d) ? `<span class="sub" style="font-size:13px">Day ${stageDays(d)} in stage${needs ? ' · ' + needs : ''}</span>` : ''}</div>${tracker}${decision}${keyfigs}</div>
@@ -1457,17 +1502,22 @@ const sidePayer = (d, k) => (k === 'buyer' ? prosById(d.cid).name : (propById(d.
 function brokerageView() {
   const pf = S.f.brok; const q = (S.q.brok || '').toLowerCase(); const st = S.tab.brokSt || 'all'; const tile = S.tab.brokTile || '';
   const all = S.brok.map((b) => ({ b, s: brokState(b) })).filter((x) => (pf === 'all' || dealPurpose(x.s.d) === pf) && (!q || (x.s.d.id + prosById(x.s.d.cid).name + x.s.d.prop).toLowerCase().includes(q)));
+  // Does a brokerage row match the chosen status filter?
   const match = (x, s) => s === 'all' || (s === 'pending' ? x.s.pend > 0 : x.s.st === s);
   const rows = all.filter((x) => match(x, st));
   const T = all.reduce((a, x) => a + x.s.tot, 0), R = all.reduce((a, x) => a + x.s.rec, 0); const OD = all.filter((x) => x.s.st === 'Overdue').reduce((a, x) => a + x.s.pend, 0);
   const mk = iso(today).slice(0, 7); const monthPays = all.flatMap((x) => x.b.pay.map((p) => ({ x, p }))).filter((y) => y.p.date.slice(0, 7) === mk); const mrec = monthPays.reduce((a, y) => a + y.p.amt, 0);
+  // Total overdue amount whose lateness falls between lo and hi days.
   const bucket = (lo, hi) => all.filter((x) => x.s.st === 'Overdue' && x.s.late >= lo && x.s.late <= hi).reduce((a, x) => a + x.s.pend, 0);
   const months = Array.from({ length: 6 }, (_, k) => { const d = new Date(today.getFullYear(), today.getMonth() - 5 + k, 1); const key = iso(d).slice(0, 7); return { l: MONTHS[d.getMonth()].slice(0, 3), v: S.brok.flatMap((b) => b.pay).filter((p) => p.date.slice(0, 7) === key).reduce((a, p) => a + p.amt, 0) }; });
   const mx = Math.max(...months.map((m) => m.v), 1);
+  // Number of rows matching a status.
   const cnt = (s) => all.filter((x) => match(x, s)).length;
   const tiles = [['total', 'Total expected', T, ''], ['received', 'Received', R, ''], ['pending', 'Pending', T - R, ''], ['overdue', 'Overdue', OD, 'err'], ['month', 'Collected this month', mrec, '']];
   const tileHtml = tiles.map((x) => `<button type="button" class="stat" data-act="brokTile" data-v="${x[0]}" style="text-align:left;cursor:pointer;font:inherit;color:inherit;${tile === x[0] ? 'border:2px solid var(--p);background:var(--p-soft)' : ''}"><span class="sub">${x[1]}</span><b style="${x[3] ? 'color:var(--err)' : ''}">${inr(x[2])}</b><span class="sub" style="font-size:11px">${tile === x[0] ? 'Showing the deals behind this' : 'Tap to see the deals'}</span></button>`).join('');
+  // Link to a deal's brokerage page.
   const link = (d) => `<a href="#/brokerage/${d.id}" style="color:var(--p);font-weight:600">${d.id}</a>`;
+  // Flatten the per-side (buyer / seller) rows that pass the filter, newest first.
   const sideRows = (f) => all.flatMap((x) => x.s.sides.filter((sd) => f(sd, x)).map((sd) => ({ x, sd }))).sort((a, b) => (b.sd.pend || b.sd.rec) - (a.sd.pend || a.sd.rec));
   let drill = '';
   if (tile === 'pending' || tile === 'overdue') { const rs = sideRows((sd, x) => sd.pend > 0 && (tile === 'pending' || x.s.st === 'Overdue')); drill = card(`<div class="head"><h2>${tile === 'overdue' ? 'Overdue — who owes what' : 'Pending — who owes what'}</h2><div class="grow"></div>${badge(inr(rs.reduce((a, r) => a + r.sd.pend, 0)) + ' · ' + rs.length + ' payer' + (rs.length === 1 ? '' : 's'))}</div><div class="list" style="margin:0 -20px -20px">${rs.map((r) => `<div class="li"><div class="av">${initials(sidePayer(r.x.s.d, r.sd.k))}</div><div class="grow"><b>${esc(sidePayer(r.x.s.d, r.sd.k))}</b> <span class="sub">(${sideName(r.x.s.d, r.sd.k)})</span><div class="sub" style="font-size:12px">${link(r.x.s.d)} · ${esc(prosById(r.x.s.d.cid).name)} · due ${esc(dateTxt(r.x.b.due))}${r.x.s.late ? ' · ' + r.x.s.late + ' days late' : ''}</div></div><b>${inr(r.sd.pend)}</b><a class="btn ghost sm" href="#/deals/${r.x.s.d.id}">Open deal</a></div>`).join('') || '<div class="li sub">Nothing pending.</div>'}</div>`); }
@@ -1475,7 +1525,7 @@ function brokerageView() {
   else if (tile === 'total') { drill = card(`<h2>Total expected — by deal</h2><div class="list" style="margin:0 -20px -20px">${all.map((x) => `<div class="li"><div class="grow"><b>${link(x.s.d)}</b> · ${esc(prosById(x.s.d.cid).name)}<div class="sub" style="font-size:12px">${x.s.sides.map((sd) => sideName(x.s.d, sd.k) + ' ' + inr(sd.tot)).join(' · ')}</div></div><b>${inr(x.s.tot)}</b>${brokBadge(x.s.st)}</div>`).join('')}</div>`); }
   else if (tile === 'month') { drill = card(`<h2>Collected this month</h2><div class="list" style="margin:0 -20px -20px">${monthPays.map((y) => `<div class="li"><div class="grow"><b>${esc(sidePayer(y.x.s.d, y.p.from))}</b> <span class="sub">(${sideName(y.x.s.d, y.p.from)})</span><div class="sub" style="font-size:12px">${link(y.x.s.d)} · ${esc(dateTxt(y.p.date))} · ${esc(y.p.mode)}</div></div><b>${inr(y.p.amt)}</b></div>`).join('') || '<div class="li sub">No payments recorded this month.</div>'}</div>`); }
   const chart = card(`<h2>Collections — last 6 months</h2><div style="display:flex;align-items:flex-end;gap:12px;height:130px">${months.map((m) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end"><span class="sub" style="font-size:11px">${m.v ? rupeesM(m.v) : ''}</span><div style="width:100%;max-width:44px;height:${Math.max(m.v / mx * 90, m.v ? 4 : 2)}px;background:${m.v ? 'var(--p)' : 'var(--line)'};border-radius:4px 4px 0 0"></div><span class="sub" style="font-size:12px">${m.l}</span></div>`).join('')}</div>`);
-  const aging = card(`<h2>Overdue ageing</h2>${[['1–30 days', bucket(1, 30)], ['31–60 days', bucket(31, 60)], ['60+ days', bucket(61, 9999)]].map((x) => `<div style="display:flex;align-items:center;gap:10px;min-height:34px"><span style="width:90px;font-size:13px">${x[0]}</span><span style="flex:1">${bar(OD ? x[1] / OD * 100 : 0, 'var(--err)')}</span><b>${inr(x[1])}</b></div>`).join('')}<div class="sub" style="font-size:12px">Only deals past their due date with money still pending.</div>`);
+  const aging = card(`<h2>Overdue ageing</h2>${[['1–30 days', bucket(1, 30)], ['31–60 days', bucket(31, 60)], ['60+ days', bucket(61, 9999)]].map((x) => `<div style="display:flex;align-items:center;gap:10px;min-height:34px"><span style="width:90px;font-size:13px">${x[0]}</span><span style="flex:1">${bar(OD ? (x[1] as number) / OD * 100 : 0, 'var(--err)')}</span><b>${inr(x[1])}</b></div>`).join('')}<div class="sub" style="font-size:12px">Only deals past their due date with money still pending.</div>`);
   const mem = {}; all.forEach((x) => { x.b.splits.forEach((sp) => { const m = mem[sp.name] || (mem[sp.name] = { w: 0, inc: 0, n: 0 }); m.w += Math.round(x.s.net * Number(sp.pct || 0) / 100); m.inc += Number(String(sp.inc || '').replace(/\D/g, '')) || 0; m.n++; }); });
   const contrib = card(`<div class="head"><h2>Contribution split</h2><div class="grow"></div>${badge('Reference for month-end')}</div><div class="sub" style="margin-top:-6px">Weighted share of net brokerage plus any lump-sum incentive, across the deals listed above. Nothing here is marked paid — payouts are worked out at month-end.</div><div class="scroll-x"><table class="tbl"><thead><tr><th>Member</th><th>Deals</th><th>Weighted share</th><th>Lump-sum incentive</th><th>Total</th></tr></thead><tbody>${Object.keys(mem).map((n) => `<tr><td><b>${esc(n)}</b></td><td>${mem[n].n}</td><td>${inr(mem[n].w)}</td><td>${inr(mem[n].inc)}</td><td><b>${inr(mem[n].w + mem[n].inc)}</b></td></tr>`).join('') || '<tr><td colspan="5" class="sub">No deals yet.</td></tr>'}</tbody></table></div>`);
   return page('Brokerage', 'Expected, received and pending — deal-wise', btn('Export', { k: 'sec', a: 'data-act="openModal" data-m="export"' }),
@@ -1532,8 +1582,10 @@ function gateRoute(R) {
 const EXP_KINDS = { properties: ['Properties', 'exportProperties'], leads: ['Leads', 'exportLeads'], prospects: ['Prospects', 'exportProspects'] };
 // Rows for an export (applies filters and masks numbers).
 function expRows(kind, f) {
+  // Is the date inside the chosen From–To range?
   const inD = (c) => (!f.from || (c || '') >= f.from) && (!f.to || (c || '') <= f.to);
   const mn = f.min === '' ? null : Number(f.min), mx = f.max === '' ? null : Number(f.max); const inV = (v) => (mn == null || v >= mn) && (mx == null || v <= mx);
+  // Does the lead source match the chosen source filter?
   const srcOk = (s) => f.source === 'all' || String(s).toLowerCase().includes(f.source.toLowerCase());
   if (kind === 'properties') { const rows = S.props.filter((p) => p.status !== 'Draft' && inD(p.created) && inV((p.purpose === 'sale' ? p.priceL : p.rentK) || 0) && srcOk(p.source) && (!f.cat || f.cat === 'all' || p.cat === f.cat) && (!f.pur || f.pur === 'all' || p.purpose === f.pur) && (!f.pst || f.pst === 'all' || p.status === f.pst)); return { head: ['Property ID', 'Title', 'Purpose', 'Category', 'Project', 'Locality', 'Carpet sq ft', 'Chargeable sq ft', 'Price (lakh) / rent (thousand)', 'Status', 'Source', 'Created'], rows: rows.map((p) => [p.id, p.title, PURPOSE[p.purpose], p.cat, p.projectId ? projById(p.projectId).name : '', p.loc, p.carpet || '', p.sbu || p.area, (p.purpose === 'sale' ? p.priceL : p.rentK) || '', p.status, p.source, p.created]) }; }
   if (kind === 'leads') { const rows = S.leads.filter((l) => inD(l.created) && inV((l.basic || {}).max || 0) && srcOk(l.source) && (!f.intent || f.intent === 'all' || l.intent === f.intent) && (!f.lst || f.lst === 'all' || l.stage === f.lst)); return { head: ['Lead ID', 'Name', 'Interest', 'Status', 'Source', 'Basic requirement', 'Budget', 'Assigned', 'Created'], rows: rows.map((l) => [l.id, l.name, l.intent === 'buy' ? 'Buy' : 'Rent/Lease', lstLabel(l.stage), l.source, l.want, l.budget, l.assigned, l.created]) }; }
@@ -1672,8 +1724,10 @@ S.deals.forEach(initDeal); S.brok.forEach(initBrok);
 // WhatsApp number field with 'same as phone' tick.
 const waFld = (P, o) => `${chk(o.waSame !== false, 'WhatsApp number is the same as the phone number', `data-act="togb" data-p="${P}.waSame"`)}${o.waSame === false ? fld('WhatsApp number', P + '.wa', { pre: '+91' }) : ''}`;
 // Content of the modals that need custom bodies (reveal, convert, sold, lost, invite ...).
-function modalExtra(m, wrap, cancel, D) {
+function modalExtra0(m, wrap, cancel, D) {
+  // The deal the open modal is about.
   const dealOf = () => S.deals.find((x) => x.id === m.id);
+  // Pick the modal body by its type.
   switch (m.t) {
     case 'agree': {
       const d = dealOf(); const sale = d.kind === 'sale';
@@ -1731,10 +1785,12 @@ function modalExtra(m, wrap, cancel, D) {
 // Build the HTML of whichever modal is open.
 function modalHtml() {
   const m = S.modal; if (!m) return '';
-  const wrap = (title, body, foot, w) => `<div class="overlay" data-act="ovClose" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal" ${w ? `style="max-width:${w}px"` : ''}><div class="mh">${title}</div><div class="mb">${body}</div><div class="mf">${foot}</div></div></div>`;
+  // Shared modal frame: title, body, footer buttons and optional width.
+  const wrap = (title, body, foot?, w?) => `<div class="overlay" data-act="ovClose" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal" ${w ? `style="max-width:${w}px"` : ''}><div class="mh">${title}</div><div class="mb">${body}</div><div class="mf">${foot}</div></div></div>`;
   const cancel = btn('Cancel', { k: 'sec', a: 'data-act="closeModal"' });
   const D = S.d;
   { const _x = modalExtra(m, wrap, cancel, D); if (_x != null) return _x; }
+  // Pick the modal body by its type.
   switch (m.t) {
     case 'lead': return wrap('Add lead', `<div class="row">${fld('Name', 'd.lead.name', { req: 1 })}${fld('Mobile', 'd.lead.phone', { req: 1, pre: '+91' })}</div><div class="note">${ico('check', 18)}<div>No duplicate found for this number.</div></div>
       <div class="fld"><span class="l">Lead source</span>${chipSet('d.lead.source', ['Direct Reference', 'Friend & Family', 'Portal', 'Associate Broker', 'Owner'], D.lead.source)}</div>${D.lead.source === 'Portal' ? fld('Which portal', 'd.lead.portal', { opts: ['99acres', 'Magicbricks', 'Housing.com', 'NoBroker'] }) : ''}
@@ -1780,6 +1836,7 @@ function parse() { const p = (location.pathname.replace(/^\/+|\/+$/g, '') || 'da
 // Pick the screen function for a route.
 function view(R) {
   { const g = gateRoute(R); if (g) return g; }
+  // Route action: which screen to build.
   switch (R.a) {
     case 'dashboard': return dashboardView();
     case 'projects': if (!R.b) return projectsView(); if (R.b === 'new') { if (S.d.projectEditId) { S.d.project = newProject(); S.d.projectEditId = null; S.files['proj:__draft'] = []; } return projectForm(false); } /* a stale edit draft must never leak into a new project (it would overwrite the edited one) */ if (R.c === 'edit') { if (S.d.projectEditId !== R.b) loadProjectDraft(R.b); return projectForm(true); } return projectDetail(R.b);
@@ -1798,25 +1855,25 @@ function view(R) {
   }
 }
 // Re-render the whole UI from S (called after every state change).
-function render() {
-  const R = parse(); const ae = document.activeElement; const fid = ae && ae.id; const ss = ae && ae.selectionStart; const sy = window.scrollY;
+function render0() {
+  const R = parse(); const ae = document.activeElement as HTMLInputElement | null; const fid = ae && ae.id; const ss = ae && ae.selectionStart; const sy = window.scrollY;
   let html; const auth = ['upload'].includes(R.a);
   try { html = view(R); if (!auth) html = shell(R, html); else html += modalHtml(); } catch (e) { html = `<pre style="padding:24px;white-space:pre-wrap">${esc(e.stack || e)}</pre>`; }
   host.innerHTML = html;
   try { const nv = NAV.find((n) => n[0] === R.a); document.title = (nv ? nv[1] : R.a === 'account' ? 'My account' : R.a === 'login' ? 'Sign in' : 'SquareFeets') + ' · SquareFeets Realty CRM'; } catch (e) { }
-  if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null && el.setSelectionRange) el.setSelectionRange(ss, ss); } catch (e) { } } }
+  if (fid) { const el = document.getElementById(fid) as HTMLInputElement | null; if (el) { el.focus(); try { if (ss != null && el.setSelectionRange) el.setSelectionRange(ss, ss); } catch (e) { } } }
   try { document.querySelectorAll('table.tbl').forEach((t) => { const hs = [...t.querySelectorAll('thead th')].map((h) => h.textContent.trim()); t.querySelectorAll('tbody tr').forEach((r) => [...r.children].forEach((c, i) => { if (hs[i] && !c.hasAttribute('data-l')) c.setAttribute('data-l', hs[i]); })); }); } catch (e) { }
   window.scrollTo(0, sy);
-  if (S.errScroll) { S.errScroll = false; const fe = document.querySelector('.fld.err'); if (fe && fe.scrollIntoView) fe.scrollIntoView({ block: 'center' }); const inp = fe && fe.querySelector ? fe.querySelector('input,select,textarea') : null; if (inp) inp.focus(); }
+  if (S.errScroll) { S.errScroll = false; const fe = document.querySelector('.fld.err') as HTMLElement | null; if (fe && fe.scrollIntoView) fe.scrollIntoView({ block: 'center' }); const inp = (fe && fe.querySelector ? fe.querySelector('input,select,textarea') : null) as HTMLElement | null; if (inp) inp.focus(); }
   const mk = S.modal ? S.modal.t + ':' + (S.modal.id || S.modal.scope || '') : '';
-  if (mk && mk !== _lastModalKey) { const f = document.querySelector('.modal input:not([type=file]),.modal select,.modal textarea,.modal button'); if (f && f.focus) f.focus(); }
+  if (mk && mk !== _lastModalKey) { const f = document.querySelector('.modal input:not([type=file]),.modal select,.modal textarea,.modal button') as HTMLElement | null; if (f && f.focus) f.focus(); }
   _lastModalKey = mk;
   clearTimeout(_saveT); _saveT = setTimeout(saveState, 400);
 }
 // document.querySelector shortcut.
 const $ = (s) => document.querySelector(s);
 // Show a transient message at the bottom.
-function toast(t) { S.toast = t; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2600); }
+function toast(t) { S.toast = t; render(); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600); }
 // Navigate with history.pushState (path routing) and re-render.
 const go = (h) => { const path = String(h).replace(/^#/, ''); if (location.pathname === path) render(); else { history.pushState({}, '', path); S.nav = false; S.newMenuOpen = false; S.err = {}; render(); window.scrollTo(0, 0); } };
 // Parse '1.5 cr' / '85 l' / '8500000' into lakhs.
@@ -1829,9 +1886,9 @@ const nextId = (arr, pre, n0) => pre + (n0 + arr.length + 1);
 /* ------------------------------------------------------------ actions */
 /* ACTS: all button actions, referenced from the HTML by data-act. */
 // Store validation errors and re-render with them shown.
-const fail = (e, tabFix) => { S.err = e; S.errScroll = true; if (tabFix) tabFix(); render(); toast('Please fix the highlighted field' + (Object.keys(e).length > 1 ? 's' : '') + '.'); };
+const fail = (e, tabFix?) => { S.err = e; S.errScroll = true; if (tabFix) tabFix(); render(); toast('Please fix the highlighted field' + (Object.keys(e).length > 1 ? 's' : '') + '.'); };
 // All click actions. Buttons carry data-act='name'; the click handler below calls ACTS[name](element). Later blocks override/extend earlier ones.
-const ACTS = {
+const ACTS: Record<string, ActHandler> = {
   // Open/close the mobile side menu.
   navToggle() { S.nav = !S.nav; render(); },
   // Toggle the '+ New' dropdown.
@@ -1881,7 +1938,7 @@ const ACTS = {
   // Confirm the chosen location into the draft.
   confirmLoc() { const o = ctxObj(); if (!o.place) o.place = PLACES[0]; if (!o.addr.street) o.addr.street = o.place.name; o.addr.pin = o.addr.pin || o.place.pin; o.addr.city = o.place.city; o.addr.state = o.place.state; go('#/pick/address'); },
   // Save the picked address into the draft.
-  saveAddr() { const b = (S.ctx && S.ctx.ret) || '#/projects/new'; S.toast = 'Address saved'; go(b); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200); },
+  saveAddr() { const b = (S.ctx && S.ctx.ret) || '#/projects/new'; S.toast = 'Address saved'; go(b); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200); },
   // Tick/untick an amenity.
   amPick(el) { const a = S.d.project.amenities; const id = el.dataset.id; S.d.project.amenities = a.includes(id) ? a.filter((x) => x !== id) : a.concat(id); S.am.notice = ''; render(); },
   // Switch amenity category tab.
@@ -1902,7 +1959,7 @@ const ACTS = {
     d.complete = d.status === 'ready' ? '' : d.cm + ' ' + d.cy; if (!d.place) d.place = null;
     const eid = S.d.projectEditId; if (eid) { d.id = eid; const i = S.projects.findIndex((p) => p.id === eid); S.projects[i] = d; } else { d.id = 'p' + Date.now(); S.projects.push(d); }
     S.files['proj:' + d.id] = S.files['proj:__draft'] || []; S.files['proj:__draft'] = [];
-    S.d.projectEditId = null; S.toast = 'Project saved'; go('#/projects/' + d.id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200); },
+    S.d.projectEditId = null; S.toast = 'Project saved'; go('#/projects/' + d.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200); },
   /* properties */
   // Start the add-property flow.
   newProperty(el) { S.newMenuOpen = false; S.files['prop:__draft'] = []; S.d.property = newProperty(); S.d.propEditId = null; S.tab.pf = 0; S.pq = { q: '', open: false }; if (el && el.dataset.pid) S.d.property.projectId = el.dataset.pid; S.ctx = null; go('#/properties/new'); },
@@ -1941,7 +1998,7 @@ const ACTS = {
     if (draft && !o.id) o.id = 'DR' + (S.props.filter((p) => p.id.startsWith('DR')).length + 1);
     if (eid) { const i = S.props.findIndex((p) => p.id === eid); S.props[i] = o; } else S.props.push(o);
     if (eid && eid !== o.id) delete S.files['prop:' + eid]; S.files['prop:' + o.id] = S.files['prop:__draft'] || []; S.files['prop:__draft'] = [];
-    S.d.propEditId = null; S.toast = draft ? 'Draft saved' : 'Property saved · ID ' + o.id; go('#/properties/' + o.id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2600); },
+    S.d.propEditId = null; S.toast = draft ? 'Draft saved' : 'Property saved · ID ' + o.id; go('#/properties/' + o.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600); },
   /* leads & prospects */
   // Change a lead's stage.
   leadStage(el) { const l = S.leads.find((x) => x.id === el.dataset.id); l.stage = el.dataset.v; l.sub = ''; l.act.unshift(['System', 'Stage changed to ' + l.stage, 'Just now']); render(); },
@@ -1963,7 +2020,7 @@ const ACTS = {
   // Add a wanted locality to the requirement.
   addLoc() { const v = (S.d.req.locNew || '').trim(); if (!v) return; if (!S.d.req.locs.includes(v)) S.d.req.locs.push(v); S.d.req.locNew = ''; render(); },
   // Validate and save a requirement.
-  saveReq() { const d = clone(S.d.req); if (!Number(d.max)) { fail({ 'd.req.max': 'Enter a maximum budget.' }); return; } const r = { id: 'REQ-' + (2037 + S.reqs.length), cid: d.cid, purpose: d.purpose, type: d.type, locs: d.locs, min: Number(d.min) || 0, max: Number(d.max), bhk: Number(d.bhk), area: (d.amin || d.amax) ? `${d.amin || '—'}–${d.amax || '—'} sq ft (${d.areaType.toLowerCase()})` : 'Any', parking: d.parking, timeline: d.timeline, status: 'Active', notes: d.notes }; S.reqs.push(r); S.tab.matchReq = r.id; S.f.matches = 'all'; S.toast = 'Requirement saved'; go('#/matches'); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200); },
+  saveReq() { const d = clone(S.d.req); if (!Number(d.max)) { fail({ 'd.req.max': 'Enter a maximum budget.' }); return; } const r = { id: 'REQ-' + (2037 + S.reqs.length), cid: d.cid, purpose: d.purpose, type: d.type, locs: d.locs, min: Number(d.min) || 0, max: Number(d.max), bhk: Number(d.bhk), area: (d.amin || d.amax) ? `${d.amin || '—'}–${d.amax || '—'} sq ft (${d.areaType.toLowerCase()})` : 'Any', parking: d.parking, timeline: d.timeline, status: 'Active', notes: d.notes }; S.reqs.push(r); S.tab.matchReq = r.id; S.f.matches = 'all'; S.toast = 'Requirement saved'; go('#/matches'); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200); },
   // Choose which requirement to view matches for.
   setMatchReq(el) { S.tab.matchReq = el.dataset.id; S.f.matches = 'all'; if (el.dataset.go) go('#/matches'); },
   // Tick/untick a matched property for sharing.
@@ -2007,7 +2064,7 @@ const ACTS = {
   // Start a new deal.
   newDeal() { S.newMenuOpen = false; S.d.deal = newDeal(); go('#/deals/new'); },
   // Validate and save a deal.
-  saveDeal() { const d = clone(S.d.deal); if (!Number(d.close)) { fail({ 'd.deal.close': 'Enter the deal closing price.' }); return; } const id = 'DEAL-' + String(146 + S.deals.length - 3).padStart(4, '0'); S.deals.push({ id, cid: d.cid, prop: d.prop, kind: d.kind === 'lease' ? 'rent' : d.kind, stage: 'negotiation', ask: Number(d.ask) || 0, close: Number(d.close), token: { on: false, amt: '', date: '', note: '' }, agr: { on: false, date: '', note: '' }, reg: { on: false, date: '', note: '' }, bType: d.bType, bBuyer: Number(d.bBuyer) || 0, bOwner: Number(d.bOwner) || 0, handled: d.handled, lostReason: '', log: [] }); S.toast = 'Deal created · ' + id; go('#/deals/' + id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200); },
+  // (an earlier duplicate saveDeal was removed: it was overridden by the later definitions below, so behaviour is unchanged)
   // Toggle a boolean on a deal (e.g. token received).
   dealTog(el) { const d = S.deals[Number(el.dataset.i)]; const k = el.dataset.k; d[k].on = !d[k].on; const old = d.stage; d.stage = d.reg.on ? 'registration' : d.agr.on ? 'agreement' : d.token.on ? 'token_paid' : 'negotiation'; if (d.stage !== old) d.stageSince = iso(today); d.prob = PROB[d.stage]; if (d.kind === 'sale') { const ix = { token: 0, agr: 1, reg: 2 }[k]; if (d.sched && d.sched[ix]) d.sched[ix].paid = d[k].on; } const lab = { token: 'Token paid', agr: 'Agreement signed', reg: 'Registration done' }[k]; dlog(d, d[k].on ? lab : lab + ' — undone'); render(); },
   // Add a note/event to a deal's timeline.
@@ -2031,9 +2088,9 @@ const ACTS = {
   // Add a party (buyer, owner, lawyer, bank ...) to a deal.
   doParty(el) { const d = S.deals.find((x) => x.id === el.dataset.id); const p = S.d.party; if (!p.name.trim()) { toast('Enter a name.'); return; } d.parties.push({ role: p.role, name: p.name.trim(), phone: '+91 ' + (p.phone || '—') }); dlog(d, 'Added ' + p.role + ': ' + p.name.trim()); S.modal = null; render(); },
   // Validate and save a deal. (later version — overrides the earlier one above)
-  saveDeal() { const d = clone(S.d.deal); if (!Number(d.close)) { toast('Enter the deal closing price.'); return; } const id = 'DEAL-' + String(146 + S.deals.length - 3).padStart(4, '0'); const nd = { id, cid: d.cid, prop: d.prop, kind: d.kind === 'lease' ? 'rent' : d.kind, stage: 'negotiation', ask: Number(d.ask) || 0, close: Number(d.close), token: { on: false, amt: '', date: '', note: '' }, agr: { on: false, date: '', note: '' }, reg: { on: false, date: '', note: '' }, bType: d.bType, bBuyer: Number(d.bBuyer) || 0, bOwner: Number(d.bOwner) || 0, handled: d.handled, lostReason: '', log: [], expected: d.expected || iso(addDays(today, 30)) }; initDeal(nd); nd.offers = nd.ask ? [{ by: 'buyer', amt: nd.ask, terms: 'Opening offer', status: 'Countered', at: dayLbl(today) }, { by: 'seller', amt: nd.close, terms: 'Agreed price', status: 'Accepted', at: dayLbl(today) }] : []; S.deals.push(nd); S.toast = 'Deal created · ' + id; go('#/deals/' + id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200); },
+  saveDeal() { const d = clone(S.d.deal); if (!Number(d.close)) { toast('Enter the deal closing price.'); return; } const id = 'DEAL-' + String(146 + S.deals.length - 3).padStart(4, '0'); const nd: Rec = { id, cid: d.cid, prop: d.prop, kind: d.kind === 'lease' ? 'rent' : d.kind, stage: 'negotiation', ask: Number(d.ask) || 0, close: Number(d.close), token: { on: false, amt: '', date: '', note: '' }, agr: { on: false, date: '', note: '' }, reg: { on: false, date: '', note: '' }, bType: d.bType, bBuyer: Number(d.bBuyer) || 0, bOwner: Number(d.bOwner) || 0, handled: d.handled, lostReason: '', log: [], expected: d.expected || iso(addDays(today, 30)) }; initDeal(nd); nd.offers = nd.ask ? [{ by: 'buyer', amt: nd.ask, terms: 'Opening offer', status: 'Countered', at: dayLbl(today) }, { by: 'seller', amt: nd.close, terms: 'Agreed price', status: 'Accepted', at: dayLbl(today) }] : []; S.deals.push(nd); S.toast = 'Deal created · ' + id; go('#/deals/' + id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200); },
   // Close a deal as won (sold/rented) and update the property.
-  doSold(el) { const d = S.deals.find((x) => x.id === el.dataset.id); d.stage = 'closed_won'; d.closedOn = iso(today); d.stageSince = iso(today); d.prob = 100; propById(d.prop).status = d.kind === 'sale' ? 'Sold' : 'Rented/Leased'; S.reqs.filter((r) => r.cid === d.cid && r.purpose === (d.kind === 'sale' ? 'sale' : 'rent')).forEach((r) => { r.status = 'Fulfilled'; }); if (!S.brok.find((b) => b.deal === d.id)) { const nb = { deal: d.id, due: iso(addDays(today, 30)), pay: [] }; initBrok(nb); S.brok.push(nb); } dlog(d, (d.kind === 'sale' ? 'Marked as Sold' : 'Marked as Leased Out') + ' — brokerage entry created'); S.modal = null; S.toast = (d.kind === 'sale' ? 'Marked as Sold' : 'Marked as Leased Out') + ' · requirement fulfilled'; go('#/brokerage/' + d.id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 3000); },
+  doSold(el) { const d = S.deals.find((x) => x.id === el.dataset.id); d.stage = 'closed_won'; d.closedOn = iso(today); d.stageSince = iso(today); d.prob = 100; propById(d.prop).status = d.kind === 'sale' ? 'Sold' : 'Rented/Leased'; S.reqs.filter((r) => r.cid === d.cid && r.purpose === (d.kind === 'sale' ? 'sale' : 'rent')).forEach((r) => { r.status = 'Fulfilled'; }); if (!S.brok.find((b) => b.deal === d.id)) { const nb = { deal: d.id, due: iso(addDays(today, 30)), pay: [] }; initBrok(nb); S.brok.push(nb); } dlog(d, (d.kind === 'sale' ? 'Marked as Sold' : 'Marked as Leased Out') + ' — brokerage entry created'); S.modal = null; S.toast = (d.kind === 'sale' ? 'Marked as Sold' : 'Marked as Leased Out') + ' · requirement fulfilled'; go('#/brokerage/' + d.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 3000); },
   // Close a deal as lost with a reason.
   doLost(el) { const d = S.deals.find((x) => x.id === el.dataset.id); d.stage = 'lost'; d.stageSince = iso(today); d.prob = 0; d.lostReason = S.d.lost.reason; if (S.d.lost.ret) propById(d.prop).status = 'Available'; if (S.d.lost.react) S.reqs.filter((r) => r.cid === d.cid).forEach((r) => { r.status = 'Active'; }); dlog(d, 'Marked as Lost — ' + d.lostReason); S.modal = null; toast('Deal marked as Lost · Admin notified'); },
   // Record a brokerage payment.
@@ -2093,7 +2150,7 @@ const ACTS = {
   notifTog(el) { S.org.notif[el.dataset.k] = !S.org.notif[el.dataset.k]; render(); },
   
   // Copy text to the clipboard.
-  copyText() { const ta = document.getElementById('copy_src'); const t = (S.modal && S.modal.text) || ''; const done = () => toast('Copied'); const fb = () => { if (ta) { ta.select(); try { document.execCommand('copy') ? done() : toast('Press Ctrl/⌘ + C to copy'); } catch (e) { toast('Press Ctrl/⌘ + C to copy'); } } }; try { navigator.clipboard.writeText(t).then(done, fb); } catch (e) { fb(); } },
+  copyText() { const ta = document.getElementById('copy_src') as HTMLTextAreaElement | null; const t = (S.modal && S.modal.text) || ''; const done = () => toast('Copied'); const fb = () => { if (ta) { ta.select(); try { document.execCommand('copy') ? done() : toast('Press Ctrl/⌘ + C to copy'); } catch (e) { toast('Press Ctrl/⌘ + C to copy'); } } }; try { navigator.clipboard.writeText(t).then(done, fb); } catch (e) { fb(); } },
   // Switch light/dark theme.
   theme(el) { S.tab.theme = el.dataset.v; const r = document.documentElement; if (el.dataset.v === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', el.dataset.v); render(); }
 };
@@ -2216,7 +2273,7 @@ Object.assign(ACTS, {
     ensureBrok(d); d.timeline = d.timeline.filter((t) => t.k !== 'closed');
     mlog(d, (sale ? 'Closed — sold' : 'Closed — leased out') + (d.closedBy ? ' · closed by ' + d.closedBy : ''), d.closedOn, d.closedBy); d.timeline[d.timeline.length - 1].k = 'closed';
     if (!sale) mlog(d, 'Lease commenced · ends ' + dateTxt(d.leaseEnd), d.leaseStart);
-    S.modal = null; S.toast = (sale ? 'Marked as Sold' : 'Marked as Leased Out') + ' · brokerage entry created'; go('#/brokerage/' + d.id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 3000);
+    S.modal = null; S.toast = (sale ? 'Marked as Sold' : 'Marked as Leased Out') + ' · brokerage entry created'; go('#/brokerage/' + d.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 3000);
   },
   // Reopen a closed/lost deal.
   reopenDeal(el) { const d = S.deals.find((x) => x.id === el.dataset.id); d.stage = d.lostFrom && d.lostFrom !== 'lost' ? d.lostFrom : 'negotiation'; d.stageSince = iso(today); d.lostReason = ''; d.lostFrom = ''; mlog(d, 'Deal reopened', iso(today)); toast('Deal reopened'); },
@@ -2296,8 +2353,9 @@ Object.assign(ACTS, {
 });
 /* ---- v4: input side-effects + deal creation */
 // Side effects after typing (auto-fill, dependent fields, live validation).
-function afterInput(p, el) {
+function afterInput0(p, el) {
   let m = p.match(/^(?:d\.deal|deals\.(\d+))\.(leaseStart|tenure|depMonths|leaseEnd|bid|ask|close)$/);
+  // Regex matched: act on it.
   if (m) {
     const o = m[1] != null ? S.deals[Number(m[1])] : S.d.deal; const f = m[2];
     if (f === 'leaseStart' || f === 'tenure') { if (o.leaseStart && Number(o.tenure) > 0) { o.leaseEnd = leaseEndOf(o.leaseStart, o.tenure); o.leaseEndEdited = false; } }
@@ -2319,10 +2377,10 @@ Object.assign(ACTS, {
     if (!ask && !Number(d.bid) && !Number(d.close)) { fail({ 'd.deal.ask': 'Enter the ask price (or a bid).' }); return; }
     if (!sale && (!d.leaseStart || !Number(d.tenure))) { fail({ 'd.deal.tenure': 'Enter the lease start date and tenure.' }); return; }
     const n = Math.max(...S.deals.map((x) => Number(x.id.slice(5)) || 0), 140) + 1; const id = 'DEAL-' + String(n).padStart(4, '0');
-    const nd = { id, cid: d.cid, prop: d.prop, kind: sale ? 'sale' : 'rent', stage: 'negotiation', ask, bid: Number(d.bid) || '', close: Number(d.close) || '', token: { on: false, amt: '', date: '', note: '' }, agr: { on: false, date: '', note: '' }, reg: { on: false, date: '', note: '' }, bType: d.bType, bBuyer: Number(d.bBuyer) || 0, bOwner: Number(d.bOwner) || 0, openedBy: d.openedBy, closedBy: d.closedBy || d.openedBy, created: d.opened || iso(today), notes: d.notes || '', lostReason: '', log: [], expected: sale ? (d.expected || '') : '', stageSince: d.opened || iso(today), upd: iso(today) };
+    const nd: Rec = { id, cid: d.cid, prop: d.prop, kind: sale ? 'sale' : 'rent', stage: 'negotiation', ask, bid: Number(d.bid) || '', close: Number(d.close) || '', token: { on: false, amt: '', date: '', note: '' }, agr: { on: false, date: '', note: '' }, reg: { on: false, date: '', note: '' }, bType: d.bType, bBuyer: Number(d.bBuyer) || 0, bOwner: Number(d.bOwner) || 0, openedBy: d.openedBy, closedBy: d.closedBy || d.openedBy, created: d.opened || iso(today), notes: d.notes || '', lostReason: '', log: [], expected: sale ? (d.expected || '') : '', stageSince: d.opened || iso(today), upd: iso(today) };
     if (!sale) Object.assign(nd, { leaseStart: d.leaseStart, tenure: Number(d.tenure), leaseEnd: d.leaseEnd || leaseEndOf(d.leaseStart, d.tenure), depMonths: Number(d.depMonths) || 0 });
     nd.offers = []; if (ask) nd.offers.push({ by: 'seller', amt: ask, terms: 'Asking price', status: nd.bid ? 'Countered' : 'Open', at: dayLbl(today) }); if (nd.bid) nd.offers.push({ by: 'buyer', amt: nd.bid, terms: 'Opening bid', status: 'Open', at: dayLbl(today) });
-    initDeal(nd); S.deals.push(nd); S.toast = 'Deal created in Negotiation · ' + id; go('#/deals/' + id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2400);
+    initDeal(nd); S.deals.push(nd); S.toast = 'Deal created in Negotiation · ' + id; go('#/deals/' + id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2400);
   }
 });
 /* ---- v4 actions: projects, properties, masters requests, reveal */
@@ -2335,7 +2393,7 @@ Object.assign(ACTS, {
     d.complete = d.status === 'ready' ? '' : [d.cm, d.cy].filter(Boolean).join(' '); d.ai = null; if (!d.place) d.place = null;
     const eid = S.d.projectEditId; if (eid) { d.id = eid; const i = S.projects.findIndex((p) => p.id === eid); S.projects[i] = d; } else { d.id = 'p' + Date.now(); S.projects.push(d); }
     S.files['proj:' + d.id] = S.files['proj:__draft'] || []; S.files['proj:__draft'] = [];
-    S.d.projectEditId = null; S.toast = 'Project saved'; go('#/projects/' + d.id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200);
+    S.d.projectEditId = null; S.toast = 'Project saved'; go('#/projects/' + d.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200);
   },
   // Run the (mock) AI extraction on a brochure.
   aiExtract() { const d = S.d.project; d.ai = { data: mockExtract(d), pick: {} }; render(); },
@@ -2397,7 +2455,7 @@ Object.assign(ACTS, {
     if (eid) { const i = S.props.findIndex((p) => p.id === eid); S.props[i] = o; } else S.props.push(o);
     if (!draft && o.status === 'Available' && (!old || old.status === 'Draft')) findAlerts(o);
     if (eid && eid !== o.id) delete S.files['prop:' + eid]; S.files['prop:' + o.id] = S.files['prop:__draft'] || []; S.files['prop:__draft'] = [];
-    S.d.propEditId = null; S.toast = draft ? 'Draft saved — find it under Properties → Draft' : 'Property saved · ID ' + o.id; go('#/properties/' + o.id); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2600);
+    S.d.propEditId = null; S.toast = draft ? 'Draft saved — find it under Properties → Draft' : 'Property saved · ID ' + o.id; go('#/properties/' + o.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600);
   },
   /* numbers */
   // Ask for permission to reveal a number.
@@ -2420,7 +2478,7 @@ ACTS.openModal = (function (orig) { return function (el, e) { const r = orig(el,
 _doc.addEventListener('change', (e) => {
   const el = e.target; if (!el || el.type !== 'file' || !el.dataset) return;
   if (el.dataset.brochure) { const f = (el.files || [])[0]; if (f) { S.d.project.brochure = f.name; S.d.project.ai = null; render(); } el.value = ''; }
-  if (el.dataset.photos) { const w = el.dataset.photos; const arr = S.d[w].photoList = S.d[w].photoList || []; Array.from(el.files || []).forEach((f) => { if (!arr.some((x) => x.name === f.name)) arr.push({ name: f.name }); }); el.value = ''; render(); }
+  if (el.dataset.photos) { const w = el.dataset.photos; const arr = S.d[w].photoList = S.d[w].photoList || []; (Array.from(el.files || []) as File[]).forEach((f) => { if (!arr.some((x) => x.name === f.name)) arr.push({ name: f.name }); }); el.value = ''; render(); }
 });
 Object.assign(ACTS, {
   // Change a lead's stage. (later version — overrides the earlier one above)
@@ -2504,8 +2562,8 @@ Object.assign(ACTS, {
   capDiscard() { S.cap.parsed = null; S.cap.text = ''; render(); },
   // Start voice dictation.
   capVoice() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (S.cap.listening) { try { ACTS._rec && ACTS._rec.stop(); } catch (e) { } S.cap.listening = false; render(); return; }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (S.cap.listening) { try { ACTS._rec && (ACTS._rec as any).stop(); } catch (e) { } S.cap.listening = false; render(); return; }
     if (!SR) { S.cap.text = CAP_SAMPLES[0]; toast('Live transcription isn’t available in this browser — a sample note was filled in'); return; }
     try { const r = new SR(); r.lang = 'en-IN'; r.interimResults = false; r.onresult = (ev) => { S.cap.text = (S.cap.text + ' ' + Array.from(ev.results).map((x) => x[0].transcript).join(' ')).trim(); }; r.onend = () => { S.cap.listening = false; render(); }; r.onerror = () => { S.cap.listening = false; render(); }; r.start(); ACTS._rec = r; S.cap.listening = true; render(); } catch (e) { S.cap.text = CAP_SAMPLES[0]; toast('Could not start the microphone — a sample note was filled in'); }
   },
@@ -2527,14 +2585,14 @@ _doc.addEventListener('change', (e) => {
 });
 /* ---- v5: dynamic forms — fields follow the choices made */
 // Classify a property as flat/house/plot/office/retail/warehouse (mirrors the API).
-function ptKind(cat, sub, title) {
+function ptKind(cat, sub, title?) {
   if (cat === 'Land') return 'plot';
   const s = String(sub || title || '');
   if (cat === 'Commercial') return /warehouse|godown/i.test(s) ? 'warehouse' : /office/i.test(s) ? 'office' : 'retail';
   return /villa|bungalow|independent house/i.test(s) ? 'house' : 'flat';
 }
 // Field layout per property kind: which inputs and units each kind shows.
-const PT = {
+const PT: Record<string, Rec> = {
   flat: { bhk: 1, baths: 1, floor: 1, lift: 1, balc: 1, furn: 1, age: 1, park: 1, feat: 1, ext: 1, side: 0, olook: 1, face: 1 },
   house: { bhk: 1, baths: 1, floors: 1, furn: 1, age: 1, park: 1, feat: 1, ext: 1, side: 1, olook: 1, face: 1, plotA: 1 },
   office: { wash: 1, floor: 1, lift: 1, seats: 1, furn: 1, age: 1, park: 1, feat: 1, side: 0, olook: 0, face: 1 },
@@ -2586,7 +2644,7 @@ function matchesFor(r) {
   }).filter((m) => m.score >= 40).sort((a, b) => b.score - a.score);
 }
 // Add/edit requirement form.
-function reqForm() {
+function reqForm0() {
   const d = S.d.req; const P = 'd.req.'; const k = reqKind(d); const sale = d.purpose === 'sale'; const unit = sale ? 'lakh (₹)' : '₹ thousand / month';
   const base = ['Salt Lake', 'New Town', 'Ballygunge', 'Alipore', 'Rajarhat', 'Bidhannagar'];
   const locs = [...base, ...d.locs.filter((x) => !base.includes(x))];
@@ -2618,7 +2676,7 @@ Object.assign(ACTS, {
     const k = reqKind(d); const res = k === 'flat' || k === 'house';
     const extra = []; if (d.furn && d.furn !== 'Any' && k !== 'plot') extra.push(d.furn); if (d.purpose === 'rent' && d.tenant !== 'Any' && res) extra.push(d.tenant); if (d.purpose === 'sale' && d.possession !== 'Any' && k !== 'plot') extra.push(d.possession); if (d.purpose === 'rent' && d.lease !== 'Any') extra.push(d.lease + ' lease'); if (d.pface && d.pface !== 'Any') extra.push(d.pface + ' facing'); if (k === 'plot') { if (d.wall !== 'Any') extra.push('Boundary wall: ' + d.wall); if (d.road) extra.push('Road ≥ ' + d.road + ' ft'); }
     const r = { id: 'REQ-' + (2037 + S.reqs.length), cid: d.cid, purpose: d.purpose, type: d.type, csub: k === 'comm' ? d.csub : '', locs: d.locs, min: Number(d.min) || 0, max: Number(d.max), bhk: res ? Number(d.bhk) || 0 : 0, amin: Number(d.amin) || 0, amax: Number(d.amax) || 0, area: (d.amin || d.amax) ? `${d.amin || '—'}–${d.amax || '—'} sq ft` + (k === 'plot' ? ' (plot)' : ' (' + d.areaType.toLowerCase() + ')') : 'Any', parking: k === 'plot' ? '—' : d.parking, timeline: d.timeline, status: 'Active', notes: [extra.join(' · '), d.notes].filter(Boolean).join(' — '), fin: d.purpose === 'sale' ? d.fin : '' };
-    S.reqs.push(r); S.tab.matchReq = r.id; S.f.matches = 'all'; S.toast = 'Requirement saved'; go('#/matches'); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; render(); }, 2200);
+    S.reqs.push(r); S.tab.matchReq = r.id; S.f.matches = 'all'; S.toast = 'Requirement saved'; go('#/matches'); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200);
   },
   // Save a follow-up. (later version — overrides the earlier one above)
   saveFu() {
@@ -2669,6 +2727,7 @@ Object.assign(ACTS, {
 // Saved reference to the previous modalExtra so the v5 version can extend it.
 const _modalExtra50 = modalExtra;
 modalExtra = function (m, wrap, cancel, D) {
+  // Pick the modal body by its type.
   switch (m.t) {
     case 'fu': {
       const f = D.fu; const k = f.kind; const who = [...S.prospects.map((c) => c.name), ...S.leads.map((l) => l.name)].filter((v, i, a) => a.indexOf(v) === i);
@@ -2716,6 +2775,7 @@ modalExtra = function (m, wrap, cancel, D) {
 const _afterInput50 = afterInput;
 afterInput = function (p, el) {
   _afterInput50(p, el);
+  // Property category/sub-type changed: reset the dependent fields.
   if (p === 'd.property.cat' || p === 'd.property.sub') {
     const d = S.d.property; if (p === 'd.property.cat' && !(SUBTYPES[d.cat] || []).includes(d.sub)) d.sub = SUBTYPES[d.cat][0];
     const k = ptKind(d.cat, d.sub); const fo = FURN[k]; if (!fo.includes(d.furn)) d.furn = fo[0];
@@ -2750,9 +2810,10 @@ _doc.addEventListener('input', (e) => {
   const el = e.target; const p = el.dataset && el.dataset.f; if (!p) return;
   setp(S, p, el.value); afterInput(p, el); if (S.err && S.err[p]) { delete S.err[p]; const fl = el.closest && el.closest('.fld'); if (fl) { fl.classList.remove('err'); const em = fl.querySelector('.emsg'); if (em) em.remove(); } }
   if (p === 'pq.q') S.pq.open = true; if (p === 'loc.q') S.loc.focus = true; if (p === 'am.q') S.am.open = true;
+  // Built-up / variant changed: recompute the dependent areas.
   if (p === 'd.property.sbu' || p === 'd.property.var') {
     const d = S.d.property; const s = Number(d.sbu) || 0; const v = Number(d.var) || 0; d.bu = s ? String(Math.round(s * (1 - v / 200))) : ''; d.carpet = s ? String(Math.round(s * (1 - v / 100))) : '';
-    const a = document.getElementById('f_d_property_bu'); const b = document.getElementById('f_d_property_carpet'); if (a) a.value = d.bu; if (b) b.value = d.carpet;
+    const a = document.getElementById('f_d_property_bu') as HTMLInputElement | null; const b = document.getElementById('f_d_property_carpet') as HTMLInputElement | null; if (a) a.value = d.bu; if (b) b.value = d.carpet;
   }
   if (el.dataset.render) render();
 });
@@ -2849,7 +2910,7 @@ function loadImportRows(rows, name) {
 // Load pasted/CSV text into the wizard.
 function loadImportText(text, name) { loadImportRows(parseDelimited(text), name); }
 // Lazy-load the SheetJS library for .xlsx files.
-function loadXLSX() { return new Promise((res, rej) => { if (window.XLSX) return res(window.XLSX); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; const t = setTimeout(() => rej(new Error('timeout')), 9000); s.onload = () => { clearTimeout(t); window.XLSX ? res(window.XLSX) : rej(new Error('missing')); }; s.onerror = () => { clearTimeout(t); rej(new Error('load')); }; document.head.appendChild(s); }); }
+function loadXLSX(): Promise<any> { return new Promise((res, rej) => { if ((window as any).XLSX) return res((window as any).XLSX); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; const t = setTimeout(() => rej(new Error('timeout')), 9000); s.onload = () => { clearTimeout(t); (window as any).XLSX ? res((window as any).XLSX) : rej(new Error('missing')); }; s.onerror = () => { clearTimeout(t); rej(new Error('load')); }; document.head.appendChild(s); }); }
 // Read the chosen file (csv/txt/xlsx) and load it.
 function importFileChosen(file) {
   if (!file) return; const n = file.name;
@@ -2860,7 +2921,7 @@ function importFileChosen(file) {
 }
 /* ---- analysis */
 // Column index of each mapped field.
-function impFieldIndex() { const idx = {}; Object.keys(S.imp.map).forEach((ci) => { const f = S.imp.map[ci]; if (f && idx[f] == null) idx[f] = Number(ci); }); return idx; }
+function impFieldIndex() { const idx: Rec = {}; Object.keys(S.imp.map).forEach((ci) => { const f = S.imp.map[ci]; if (f && idx[f] == null) idx[f] = Number(ci); }); return idx; }
 // Required fields that are not mapped yet.
 function impMissing() {
   const I = S.imp; const idx = impFieldIndex(); const m = [];
@@ -2876,7 +2937,7 @@ function impAnalyze() {
   const team = S.team.map((t) => t.name.toLowerCase());
   data.forEach((cells, i) => {
     const v = (f) => (idx[f] == null ? '' : String(cells[idx[f]] || '').trim());
-    const errors = [], warns = []; let rec = {}, dup = null, label = '';
+    const errors = [], warns = []; let rec: Rec = {}, dup: any = null, label = '';
     if (kind === 'properties') {
       const pr = v('purpose'); let purpose = pr ? normPurpose(pr) : I.opts.defaultPurpose; if (pr && !purpose) errors.push('Purpose “' + pr + '” not recognised — use Sale or Rent/Lease');
       const loc = v('loc'); if (!loc) errors.push('Locality / address is missing');
@@ -2899,7 +2960,7 @@ function impAnalyze() {
     } else {
       const name = v('name'); if (!name) errors.push('Name is missing');
       const ph = normPhone(v('phone')); if (ph.empty) errors.push('Mobile is missing'); else if (!ph.ok) errors.push('Mobile “' + v('phone') + '” is not a valid number');
-      const as = ''; if (as && !team.includes(as.toLowerCase())) warns.push('“' + as + '” is not on your team — assigned to ' + I.opts.assigned);
+      const as: string = ''; if (as && !team.includes(as.toLowerCase())) warns.push('“' + as + '” is not on your team — assigned to ' + I.opts.assigned);
       const em = v('email'); if (em && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(em)) warns.push('Email looks invalid');
       const assigned = as && team.includes(as.toLowerCase()) ? S.team.find((t) => t.name.toLowerCase() === as.toLowerCase()).name : I.opts.assigned;
       if (kind === 'prospects') {
@@ -2942,7 +3003,7 @@ function impRun() {
     if (act === 'skip') { H.counts.skipped++; return; }
     if (act === 'merge' && r.dup && r.dup.kind === 'existing' && !r.dup.noMerge) {
       const t = r.dup.type; const arr = t === 'prop' ? S.props : t === 'pros' ? S.prospects : S.leads; const ix = arr.findIndex((x) => x.id === r.dup.id); if (ix < 0) { H.counts.skipped++; return; }
-      const cur = arr[ix]; H.merged.push({ t, id: cur.id, before: clone(cur) }); const fill = (k, v, blank) => { if (v && (cur[k] == null || cur[k] === '' || cur[k] === '—' || cur[k] === 0)) cur[k] = v; };
+      const cur = arr[ix]; H.merged.push({ t, id: cur.id, before: clone(cur) }); const fill = (k, v, blank?) => { if (v && (cur[k] == null || cur[k] === '' || cur[k] === '—' || cur[k] === 0)) cur[k] = v; };
       if (t === 'prop') { fill('priceL', r.rec.priceL); fill('quotedL', r.rec.priceL); fill('rentK', r.rec.rentK); fill('furn', r.rec.furn); fill('owner', r.rec.owner); fill('bhk', r.rec.bhk); fill('area', r.rec.area); fill('ownerPhone', r.rec.ownerPhone); }
       else if (t === 'pros') { fill('email', r.rec.email); fill('city', r.rec.city); fill('lang', r.rec.lang); fill('notes', r.rec.notes); }
       else { fill('want', r.rec.want); fill('budget', r.rec.budget); cur.act.unshift(['System', 'Details updated from import ' + I.file, 'Just now']); }
@@ -2976,6 +3037,7 @@ function impUndo(id) {
 // Download rows with errors as CSV.
 function impErrorCsv() {
   const I = S.imp; const { headers } = impTable(); const rows = impAnalyze().filter((r) => r.status === 'error');
+  // Quote one CSV cell (double any inner quotes).
   const q = (c) => '"' + String(c).replace(/"/g, '""') + '"';
   return [headers.concat(['Import problems']).map(q).join(',')].concat(rows.map((r) => r.cells.concat([r.errors.join('; ')]).map(q).join(','))).join('\n');
 }
@@ -2985,6 +3047,7 @@ function importView() {
   const I = S.imp; const steps = ['Choose data', 'Match columns', 'Check & fix', 'Done']; const info = IMP_INFO[I.kind];
   const stepper = `<div class="step">${steps.map((s, i) => `<div class="${i < I.step ? 'done' : i === I.step ? 'cur' : ''}" ${i < I.step && I.step < 3 ? `role="button" tabindex="0" data-act="impStep" data-v="${i}" style="cursor:pointer"` : ''}>${i + 1}. ${s}</div>`).join('')}</div>`;
   let body = '';
+  // Step 0: the file-pick screen.
   if (I.step === 0) {
     const kinds = Object.keys(IMP_INFO).map((k) => `<button type="button" class="card" data-act="impKind" data-v="${k}" style="text-align:left;gap:4px;border:${I.kind === k ? '2px solid var(--p)' : '1px solid var(--line)'};background:${I.kind === k ? 'var(--p-soft)' : 'var(--surface)'};padding:16px"><div class="head"><b style="font-size:16px">${IMP_INFO[k].title}</b><div class="grow"></div>${I.kind === k ? badge('Selected', 'blue') : ''}</div><span class="sub">${IMP_INFO[k].desc}</span><span class="sub" style="font-size:12px">Needs: ${IMP_INFO[k].need}</span></button>`).join('');
     const o = I.opts;
@@ -3084,7 +3147,7 @@ const REC = {
 // Find one record of a kind by its id.
 const recOf = (k, id) => REC[k].list().find((x) => String(x[REC[k].key || 'id']) === String(id));
 // "3 visits" / "1 visit"
-const nOf = (n, one, many) => n + ' ' + (n === 1 ? one : many || one + 's');
+const nOf = (n, one, many?) => n + ' ' + (n === 1 ? one : many || one + 's');
 // Short comma list of ids, "VIS-3387, VIS-3394 and 2 more".
 const idList = (arr) => { const a = arr.slice(0, 4).join(', '); return arr.length > 4 ? a + ' and ' + (arr.length - 4) + ' more' : a; };
 // Was this lead converted into a prospect? (by link, or — for older data — by stage + same name)
@@ -3094,20 +3157,25 @@ const prospectOfLead = (l) => S.prospects.find((c) => c.id === l.prospectId) || 
 function usesOf(k, id) {
   const r = recOf(k, id); if (!r) return [];
   const u = [];
-  const add = (arr, one, many, ids, where) => { if (arr.length) u.push(nOf(arr.length, one, many) + (where ? ' ' + where : '') + (ids ? ': ' + idList(ids) : '')); };
+  // Add a line to the summary only when the list is not empty.
+  const add = (arr, one, many?, ids?, where?) => { if (arr.length) u.push(nOf(arr.length, one, many) + (where ? ' ' + where : '') + (ids ? ': ' + idList(ids) : '')); };
+  // Describe a project change.
   if (k === 'project') {
     const ps = S.props.filter((p) => p.projectId === id);
     add(ps, 'property is', 'properties are', ps.map((p) => p.id), 'listed in this project');
   }
+  // Describe a property change.
   if (k === 'property') {
     const vs = S.visits.filter((v) => v.prop === id); add(vs, 'visit', 'visits', vs.map((v) => v.id), 'booked for this property');
     const ds = S.deals.filter((d) => d.prop === id); add(ds, 'deal', 'deals', ds.map((d) => d.id), 'made on this property');
     const fs = S.fus.filter((f) => !f.done && String(f.note || '').startsWith(id + ' · ')); add(fs, 'open follow-up mentions this property', 'open follow-ups mention this property', fs.map((f) => f.who));
   }
+  // Describe a lead change.
   if (k === 'lead') {
     const c = prospectOfLead(r); if (c) u.push('This lead was converted into the prospect ' + c.name + ' (' + c.id + ')');
     const fs = S.fus.filter((f) => !f.done && f.who === r.name); add(fs, 'open follow-up', 'open follow-ups', null, 'for ' + r.name);
   }
+  // Describe a prospect change.
   if (k === 'prospect') {
     const rq = S.reqs.filter((x) => x.cid === id); add(rq, 'requirement', 'requirements', rq.map((x) => x.id));
     const vs = S.visits.filter((v) => v.cid === id); add(vs, 'visit', 'visits', vs.map((v) => v.id));
@@ -3116,12 +3184,14 @@ function usesOf(k, id) {
     const ls = S.leads.filter((l) => prospectOfLead(l) === r); add(ls, 'lead was', 'leads were', ls.map((l) => l.name), 'converted into this prospect');
     const ps = S.props.filter((p) => p.owner === r.name); add(ps, 'property lists', 'properties list', ps.map((p) => p.id), r.name + ' as the owner');
   }
+  // Describe a deal change.
   if (k === 'deal') {
     const b = S.brok.find((x) => x.deal === id);
     if (r.stage === 'closed_won') u.push('The deal is closed (won) — ' + r.prop + ' is marked ' + (r.kind === 'sale' ? 'Sold' : 'Rented/Leased'));
     if (b && (b.pay || []).length) u.push(nOf(b.pay.length, 'brokerage payment', 'brokerage payments') + ' recorded against this deal');
     if (b && b.inv) u.push('Brokerage invoices have been issued for this deal');
   }
+  // Describe a brokerage change.
   if (k === 'brok') {
     const d = S.deals.find((x) => x.id === r.deal);
     if (d) u.push('It belongs to deal ' + d.id + ' — brokerage is created and removed together with its deal');
@@ -3136,17 +3206,21 @@ function rowActs(k, id) {
   const r = recOf(k, id); const nm = r ? REC[k].name(r) : id;
   return `<span class="ra" style="display:inline-flex;gap:6px;white-space:nowrap;flex:none"><button type="button" class="btn sec sm" data-act="rowEdit" data-k="${k}" data-id="${esc(id)}" title="Edit" aria-label="Edit ${esc(nm)}">${ico('edit', 16)}</button><button type="button" class="btn sec sm" style="color:var(--err)" data-act="rowDel" data-k="${k}" data-id="${esc(id)}" title="Delete" aria-label="Delete ${esc(nm)}">${ico('trash', 16)}</button></span>`;
 }
+// Table cell holding the row action buttons.
 const rowActsTd = (k, id) => `<td style="width:1%;text-align:right" data-l="Actions">${rowActs(k, id)}</td>`;
+// Matching header cell for the actions column.
 const rowActsTh = () => '<th style="width:1%" aria-label="Actions"></th>';
 
 // '+91 98630 34210' -> '98630 34210' (the forms add the +91 themselves)
 const no91 = (s) => String(s || '').replace(/^\+91\s*/, '');
 // Records being edited through the "add" forms (null = the form is adding a new record).
 S.d.edit = { lead: null, prospect: null, req: null, visit: null, fu: null };
+// Clear every open edit form (lead, prospect, visit, follow-up).
 const clearModalEdits = () => { S.d.edit.lead = S.d.edit.prospect = S.d.edit.visit = S.d.edit.fu = null; };
 
 // Fill the "add" form drafts from an existing record.
 const EDIT_LOAD = {
+  // Summary text for a lead.
   lead(l) {
     const b = l.basic || {}; const chips = ['Direct Reference', 'Friend & Family', 'Portal', 'Associate Broker', 'Owner'];
     const portal = !chips.includes(l.source);
@@ -3154,12 +3228,14 @@ const EDIT_LOAD = {
     S.modal = { t: 'lead' };
   },
   prospect(c) { S.d.prospect = Object.assign(newProspect(), clone(c), { phone: no91(c.phone), wa: no91(c.wa), alt: no91(c.alt) }); S.modal = { t: 'prospect' }; },
+  // Summary text for a requirement.
   req(r) {
     S.d.req = Object.assign(newReq(), { cid: r.cid, purpose: r.purpose, type: r.type, csub: r.csub || 'Office', locs: (r.locs || []).slice(), min: r.min ? String(r.min) : '', max: r.max ? String(r.max) : '', bhk: r.bhk || 3, amin: r.amin ? String(r.amin) : '', amax: r.amax ? String(r.amax) : '', timeline: r.timeline || 'Immediate', fin: r.fin || 'Cash', notes: r.notes || '' });
     if (r.parking && r.parking !== '—') S.d.req.parking = r.parking;
     go('#/requirements/new');
   },
   visit(v) { S.d.visit = { cid: v.cid, props: [v.prop], date: v.date, time: v.time, mode: v.mode || 'site', link: v.mode === 'video' ? String(v.notes || '').replace(/^Video call · /, '') : '', meet: String(v.notes || '').startsWith('Meet at ') ? v.notes.slice(8) : '', remind: 'WhatsApp', pin: true }; S.modal = { t: 'visit' }; },
+  // Summary text for a follow-up.
   fu(f) {
     const m = String(f.note || '').match(/^([A-Z]{2}\d{3}) · (.*)$/); const prop = f.kind === 'Visit' && m ? m[1] : ''; const note = prop ? m[2] : f.note || '';
     S.d.fu = Object.assign(newFu(), { who: f.who, kind: f.kind, p: f.p || 'sale', pri: f.pri || 'Normal', note, prop, when: 'keep', date: '', time: '' }); S.modal = { t: 'fu' };
@@ -3272,10 +3348,12 @@ ACTS.newReq = (function (orig) { return function (el) { S.d.edit.req = null; ret
 // Dialogs: "Can't delete", "Delete?", and edit-mode titles for the add dialogs.
 const _modalExtra60 = modalExtra;
 modalExtra = function (m, wrap, cancel, D) {
+  // Deletion is blocked because other records depend on this one.
   if (m.t === 'delBlocked') {
     const R = REC[m.k]; const r = recOf(m.k, m.id);
     return wrap('This ' + R.label + ' can’t be deleted', `<div class="note" style="background:var(--err-soft);border-color:var(--err);color:var(--err)">${ico('info', 18)}<div><b>${esc(r ? R.name(r) : m.id)}</b> is still used elsewhere in the CRM, so deleting it would break those records.</div></div><div class="fld"><span class="l">Where it is used</span><ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">${m.uses.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div><div class="sub" style="font-size:13px">${m.k === 'brok' ? 'Delete the deal instead (only possible while no payment has been recorded).' : m.k === 'deal' ? 'Closed deals and deals with brokerage payments are kept for your records. If the deal fell through, mark it as Lost instead.' : 'Remove or reassign these first, then try again.' + (m.k === 'property' ? ' To take a listing off the market without deleting it, change its status (e.g. On hold).' : '')}</div>`, btn('OK', { a: 'data-act="closeModal"' }));
   }
+  // Ask the user to confirm the deletion.
   if (m.t === 'delAsk') {
     const R = REC[m.k]; const r = recOf(m.k, m.id); if (!r) return '';
     const nDocs = R.scope ? (S.files[R.scope + ':' + m.id] || []).length + (m.k === 'deal' ? (S.files['brok:' + m.id] || []).length : 0) : 0;
@@ -3285,6 +3363,7 @@ modalExtra = function (m, wrap, cancel, D) {
   let html = _modalExtra60(m, wrap, cancel, D);
   // Edit mode: same form, but titled "Edit …" and (for follow-ups) showing the current due time.
   const ek = { lead: 'lead', prospect: 'prospect', visit: 'visit', fu: 'fu' }[m.t];
+  // Re-open the form for the record being edited.
   if (html && ek && S.d.edit[ek]) {
     const T = { lead: ['Add lead', 'Edit lead'], prospect: ['Add prospect', 'Edit prospect'], visit: ['Schedule visit', 'Edit visit'], fu: ['Add follow-up', 'Edit follow-up'] }[ek];
     html = html.split('aria-label="' + T[0] + '"').join('aria-label="' + T[1] + '"').split('<div class="mh">' + T[0] + '</div>').join('<div class="mh">' + T[1] + '</div>');
@@ -3317,6 +3396,7 @@ const isOwner = () => ME().role === 'Owner';
 const phoneIn = (v) => { const x = String(v || '').replace(/^\+91\s*/, '').trim(); return x === '—' || x === '-' ? '' : x; };
 // Typed digits -> stored text. A masked value that was not touched keeps what is already stored.
 const phoneOut = (orig, typed) => { const x = String(typed || '').trim(); if (!x) return '+91 —'; return x.includes('•') ? orig : '+91 ' + x; };
+// Status badge for team members (Inactive/Disabled are shown as Deactivated).
 const memberBadge = (st) => badge(st === 'Disabled' || st === 'Inactive' ? 'Deactivated' : st, st === 'Active' ? 'ok' : st === 'Invited' ? 'warn' : 'err');
 
 // Team: members table + roles & permissions.
@@ -3353,6 +3433,7 @@ function teamView() {
 // One readable sentence for an audit-log entry (everything escaped).
 function auditLine(a) {
   const w = esc(a.actor), t = esc(a.target), d = a.detail || {};
+  // Pick the action by its type.
   switch (a.action) {
     case 'team.create': return `<b>${w}</b> added <b>${t}</b>${d.role ? ' as ' + esc(d.role) : ''}`;
     case 'team.update': return `<b>${w}</b> edited <b>${t}</b>${d.changed && d.changed.length ? ' <span class="sub">(' + d.changed.map(esc).join(', ') + ')</span>' : ''}`;
@@ -3381,6 +3462,7 @@ Object.assign(ACTS, {
   addMember() { S.d.invite = { name: '', email: '', phone: '', corp: '', alt: '', role: 'Agent', area: '' }; S.err = {}; S.modal = { t: 'invite' }; render(); },
   // Open the edit-member dialog.
   editMember(el) { const t = S.team.find((x) => x.name === el.dataset.n); if (!t) return; S.d.mem = { email: t.email || '', role: t.role, phone: phoneIn(t.phone), corp: phoneIn(t.corp), alt: phoneIn(t.alt), area: t.area || '' }; S.err = {}; S.modal = { t: 'member', n: t.name }; render(); },
+  // Save the member form: validated here, then sent through the Team API.
   doMember() {
     const t = S.team.find((x) => x.name === S.modal.n); const d = S.d.mem; const e = {};
     if (d.email && !/^\S+@\S+\.\S+$/.test(d.email.trim())) e['d.mem.email'] = 'Enter a valid email.';
@@ -3391,6 +3473,7 @@ Object.assign(ACTS, {
     S.modal = null; S.err = {}; toast('Saved ' + t.name); },
   // Open the set / reset password dialog.
   setPw(el) { const t = S.team.find((x) => x.name === el.dataset.n); if (!t) return; S.d.spw = { email: t.email || '', next: '', again: '' }; S.err = {}; S.modal = { t: 'setpw', n: t.name }; render(); },
+  // Set a member's password: validated here, saved through the Team API (an Invited member becomes Active).
   async doSetPw() {
     const t = S.team.find((x) => x.name === S.modal.n); const d = S.d.spw; const e = {};
     if (!/^\S+@\S+\.\S+$/.test(String(d.email || '').trim())) e['d.spw.email'] = 'Enter the email they will sign in with.';
@@ -3427,6 +3510,7 @@ ACTS.doInvite = function (el, e) {
 // Dialogs for the team screens + a notifications list built from real data.
 const _modalExtraTeam = modalExtra;
 modalExtra = function (m, wrap, cancel, D) {
+  // Pick the modal body by its type.
   switch (m.t) {
     case 'member': {
       const t = S.team.find((x) => x.name === m.n); if (!t) return null; const d = D.mem;

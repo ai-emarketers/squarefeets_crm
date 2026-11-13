@@ -24,10 +24,12 @@ const owner: any = { id: 'seed', name: 'Seed', role: 'Owner' };
 
 // --- date shifting: the prototype's fixed demo 'today' is moved to the day you run the seed ---
 const DAY = 86400000;
+// Convert an ISO date string (YYYY-MM-DD) to UTC milliseconds.
 const toUTC = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
 // number of days between the prototype's base date and today
 const now = new Date();
 const shiftDays = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - toUTC(seed.baseDate)) / DAY);
+// Convert UTC milliseconds back to an ISO date string (YYYY-MM-DD).
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Shift every yyyy-mm-dd (and yyyy-mm-ddThh:mm) in the seed by the same number of days. */
 function shift(v: any): any {
@@ -47,6 +49,7 @@ function shift(v: any): any {
 async function many(svc: any, rows: any[]) {
   // spread createdAt one second apart so default ordering matches the prototype's list order
   const t0 = Date.now() - rows.length * 1000;
+  // Insert rows one by one so each keeps its list order (_o).
   for (let i = 0; i < rows.length; i++) {
     // `_o` remembers the original position for the UI's sort
     const row = await svc.create({ ...shift(rows[i]), _o: i }, owner);
@@ -78,6 +81,7 @@ async function main() {
 
   // --- team: only the Owner gets a password; other members are invited without one ---
   const hash = await bcrypt.hash(password, 10);
+  // Create each demo team member with a hashed demo password.
   for (const t of seed.team) {
     await prisma.user.create({
       data: { name: t.name, role: t.role, email: t.role === 'Owner' ? email : t.email || null, phone: t.phone, corpPhone: t.corp || '', altPhone: t.alt || '', status: t.status || 'Active', seeNumbers: !!t.seeNumbers, passwordHash: t.role === 'Owner' ? hash : null },

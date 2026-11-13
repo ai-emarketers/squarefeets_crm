@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from './permissions.service';
 import { AuditService } from '../audit/audit.service';
 
+// Sign-in logic: password check, token issue, password change.
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService, private jwt: JwtService, private perms: PermissionsService, private audit: AuditService) {}

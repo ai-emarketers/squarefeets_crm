@@ -4,6 +4,7 @@ import { CrudController } from '../crud/crud.controller';
 import { Perm } from '../auth/auth.decorators';
 import { PropertiesService } from './properties.service';
 
+// REST endpoints under /api/properties.
 @Controller('properties')   // URL prefix -> /api/properties
 @Perm('properties')         // access is governed by the "properties" row of the permission matrix
 export class PropertiesController extends CrudController {

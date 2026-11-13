@@ -15,6 +15,7 @@ import { AuthUser } from '../auth/auth.decorators';
 /** export kind -> the action permission needed to export it (same names as Settings → role permissions). */
 export const EXPORT_ACTIONS: Record<string, string> = { properties: 'exportProperties', leads: 'exportLeads', prospects: 'exportProspects' };
 
+// Export requests: create, approve/reject, mark downloaded.
 @Injectable()
 export class ExportsService {
   constructor(private prisma: PrismaService, private perms: PermissionsService, private audit: AuditService) {}

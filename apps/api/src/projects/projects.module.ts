@@ -4,5 +4,6 @@ import { Module } from '@nestjs/common';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
+// ProjectsModule: Nest module — wires this feature's controller and service together.
 @Module({ controllers: [ProjectsController], providers: [ProjectsService], exports: [ProjectsService] })
 export class ProjectsModule {}
