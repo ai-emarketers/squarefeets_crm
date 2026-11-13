@@ -9,11 +9,13 @@ import { VisitsModule } from '../visits/visits.module';
 import { FollowUpsModule } from '../followups/followups.module';
 import { DealsModule } from '../deals/deals.module';
 import { BrokerageModule } from '../brokerage/brokerage.module';
+import { TeamModule } from '../team/team.module';
+import { ExportsModule } from '../exports/exports.module';
 import { StateController } from './state.controller';
 import { StateService } from './state.service';
 
 @Module({
-  imports: [ProjectsModule, PropertiesModule, LeadsModule, ProspectsModule, RequirementsModule, VisitsModule, FollowUpsModule, DealsModule, BrokerageModule],
+  imports: [ProjectsModule, PropertiesModule, LeadsModule, ProspectsModule, RequirementsModule, VisitsModule, FollowUpsModule, DealsModule, BrokerageModule, TeamModule, ExportsModule],
   controllers: [StateController],
   providers: [StateService],
 })

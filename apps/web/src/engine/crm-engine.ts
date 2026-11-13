@@ -1554,7 +1554,7 @@ function exportView() {
       ${needsAppr ? `<div class="sub" style="font-size:12px">Exports from your role need approval from an Admin or Manager first.</div>` : ''}
       <div>${btn(needsAppr ? 'Request export' : 'Export as CSV', { i: needsAppr ? 'clock' : 'download', a: 'data-act="doExport"' })}</div>`)}
     ${card(`<h2>Preview</h2><div class="scroll-x"><table class="tbl"><thead><tr>${t.head.slice(0, 6).map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.slice(0, 6).map((r) => `<tr>${r.slice(0, 6).map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="sub" style="font-size:12px">First ${Math.min(6, t.rows.length)} of ${t.rows.length} rows, first 6 columns.</div>`)}</div>
-    <div class="stack">${canA('approveExports') && queue.length ? card(`<h2>Export requests waiting for you</h2>${queue.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(r.by)} · ${esc(dateTxt(r.at))}</div></div>${btn('Reject', { k: 'ghost sm', a: `data-act="expAppr" data-id="${r.id}" data-v="Rejected"` })}${btn('Approve', { k: 'sm', a: `data-act="expAppr" data-id="${r.id}" data-v="Approved"` })}</div>`).join('')}`) : ''}${mine.length ? card(`<h2>My export requests</h2>${mine.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(dateTxt(r.at))}</div></div>${badge(r.status, r.status === 'Approved' ? 'ok' : r.status === 'Rejected' ? 'err' : 'warn')}${r.status === 'Approved' ? btn('Download', { k: 'ghost sm', a: `data-act="expDl" data-id="${r.id}"` }) : ''}</div>`).join('')}`) : ''}
+    <div class="stack">${canA('approveExports') && queue.length ? card(`<h2>Export requests waiting for you</h2>${queue.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(r.by)} · ${esc(dateTxt(r.at))}</div></div>${btn('Reject', { k: 'ghost sm', a: `data-act="expAppr" data-id="${r.id}" data-v="Rejected"` })}${btn('Approve', { k: 'sm', a: `data-act="expAppr" data-id="${r.id}" data-v="Approved"` })}</div>`).join('')}`) : ''}${mine.length ? card(`<h2>My export requests</h2>${mine.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(dateTxt(r.at))}${r.decidedBy ? ' · ' + (r.status === 'Rejected' ? 'rejected' : 'approved') + ' by ' + esc(r.decidedBy) : ''}</div></div>${badge(r.status, r.status === 'Approved' ? 'ok' : r.status === 'Rejected' ? 'err' : 'warn')}${r.status === 'Approved' ? btn('Download', { k: 'ghost sm', a: `data-act="expDl" data-id="${r.id}"` }) : ''}</div>`).join('')}`) : ''}
     ${card(`<h2>Recent exports</h2><div class="list" style="margin:0 -20px -20px">${S.exportLog.slice(0, 8).map((x) => `<div class="li"><div class="grow"><b>${esc(x.who)}</b> exported ${esc(x.what)}<div class="sub" style="font-size:12px">${x.n} rows</div></div><span class="sub">${esc(fmtStamp(x.at))}</span></div>`).join('') || '<div class="li sub">No exports yet.</div>'}</div>`)}</div></div>`);
 }
 /* ---------------- masters (admin console) */
@@ -1660,7 +1660,7 @@ function saveState() { try { ADAPTER.save(S); } catch (e) { console.error(e); } 
 // No-op in the connected build: data is loaded from /api/bootstrap instead of the browser.
 function loadState() {
   PERSIST.forEach((k) => { if (BOOT[k] !== undefined) S[k] = BOOT[k]; });
-  S.files = BOOT.files || {}; S.me = BOOT.me; S.profile = BOOT.profile;
+  S.files = BOOT.files || {}; S.me = BOOT.me; S.profile = BOOT.profile; S.audit = BOOT.audit || [];
   S.visits.forEach(syncWhen);
   ADAPTER.loaded && ADAPTER.loaded(S);
 }
@@ -3333,7 +3333,7 @@ function teamView() {
     ].join('') : '<span class="sub">—</span>';
     return `<tr><td><b>${n}</b>${t.name === meName ? ' <span class="sub">(you)</span>' : ''}${t.area ? `<div class="sub" style="font-size:12px">Covers ${esc(t.area)}</div>` : ''}</td><td>${esc(t.role)}</td><td>${contact}</td>
       <td>${isO ? '<span class="sub">Always</span>' : adm ? chk(!!t.seeNumbers, 'Full numbers', `data-act="seeNum" data-n="${n}"`) : (t.seeNumbers ? 'Full numbers' : 'Masked')}</td>
-      <td>${memberBadge(t.status)}</td><td><div class="head" style="gap:6px;flex-wrap:wrap">${acts}</div></td></tr>`;
+      <td>${memberBadge(t.status)}</td><td class="sub">${t.last ? esc(fmtStamp(t.last)) : 'Never'}</td><td><div class="head" style="gap:6px;flex-wrap:wrap">${acts}</div></td></tr>`;
   }).join('');
   const roleHead = ROLES.map((r) => `<th>${esc(r)}</th>`).join('');
   const modRows = S.perms.mods.map(([m, label]) => `<tr><td><b>${esc(label)}</b></td>${ROLES.map((r, c) => {
@@ -3343,12 +3343,29 @@ function teamView() {
   const actRows = S.perms.act.map(([k, label, flags]) => `<tr><td><b>${esc(label)}</b></td>${ROLES.map((r, c) => `<td>${own ? chk(!!flags[c], '', `data-act="permAct" data-k="${k}" data-c="${c}" aria-label="${esc(label + ' — ' + r)}"`) : (flags[c] ? badge('Allowed', 'ok') : badge('Not allowed'))}</td>`).join('')}</tr>`).join('');
   const act = adm ? btn('Add member', { i: 'plus', a: 'data-act="addMember"' }) : '';
   return page('Team', S.team.length + ' member' + (S.team.length === 1 ? '' : 's') + ' · who can sign in and what they can do', act,
-    `<div class="stack">${card(`<h2>Members</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Contact</th><th>Phone numbers</th><th>Status</th><th>Actions</th></tr></thead><tbody>${members}</tbody></table></div>
+    `<div class="stack">${card(`<h2>Members</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Contact</th><th>Phone numbers</th><th>Status</th><th>Last sign-in</th><th>Actions</th></tr></thead><tbody>${members}</tbody></table></div>
       <div class="sub" style="font-size:12px">New members sign in with their email and the password you set. “Deactivate” blocks sign-in but keeps their records; “Remove” deletes the sign-in. “Full numbers” lets that person see unmasked phone numbers.</div>`, 'flush')}
     ${card(`<div class="head"><h2>Roles &amp; permissions</h2><div class="grow"></div>${own ? '' : badge('View only')}</div><div class="sub" style="font-size:12px">The owner always has full access. ${own ? 'Changes save automatically and apply to each person the next time they load the CRM.' : 'Only the owner can change these settings.'}</div>
       <div class="scroll-x"><table class="tbl"><thead><tr><th>Module</th>${roleHead}</tr></thead><tbody>${modRows}</tbody></table></div>`, 'flush')}
-    ${card(`<h2>Special permissions</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>Permission</th>${roleHead}</tr></thead><tbody>${actRows}</tbody></table></div>`, 'flush')}</div>`);
+    ${card(`<h2>Special permissions</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>Permission</th>${roleHead}</tr></thead><tbody>${actRows}</tbody></table></div>`, 'flush')}
+    ${card(`<h2>Recent activity</h2><div class="list" style="margin:0 -20px -20px">${(S.audit || []).map((a) => `<div class="li"><div class="grow">${auditLine(a)}</div><span class="sub">${esc(fmtStamp(a.at))}</span></div>`).join('') || '<div class="li sub">Nothing recorded yet. Team changes, password resets and export decisions appear here.</div>'}</div>`)}</div>`);
 }
+// One readable sentence for an audit-log entry (everything escaped).
+function auditLine(a) {
+  const w = esc(a.actor), t = esc(a.target), d = a.detail || {};
+  switch (a.action) {
+    case 'team.create': return `<b>${w}</b> added <b>${t}</b>${d.role ? ' as ' + esc(d.role) : ''}`;
+    case 'team.update': return `<b>${w}</b> edited <b>${t}</b>${d.changed && d.changed.length ? ' <span class="sub">(' + d.changed.map(esc).join(', ') + ')</span>' : ''}`;
+    case 'team.status': return `<b>${w}</b> ${d.to === 'Disabled' ? 'deactivated' : 'activated'} <b>${t}</b>`;
+    case 'team.remove': return `<b>${w}</b> removed <b>${t}</b>`;
+    case 'team.password.reset': return `<b>${w}</b> set a new password for <b>${t}</b>`;
+    case 'account.password.change': return `<b>${w}</b> changed their own password`;
+    case 'export.request': return `<b>${w}</b> requested a ${esc(d.kind || '')} export${d.rows != null ? ' (' + d.rows + ' rows)' : ''}`;
+    case 'export.decide': return `<b>${w}</b> ${esc(String(d.status || 'decided').toLowerCase())} <b>${esc(d.requestedBy || '')}</b>'s ${esc(d.kind || '')} export`;
+    default: return `<b>${w}</b> · ${esc(a.action)} ${t}`;
+  }
+}
+
 
 // My account: details + change password.
 function accountView() {
@@ -3382,7 +3399,7 @@ Object.assign(ACTS, {
     if (Object.keys(e).length) { fail(e); return; }
     try {
       await ADAPTER.api('/team/' + encodeURIComponent(t.name) + '/password', { method: 'POST', body: { password: d.next, email: d.email.trim() } });
-      t.email = d.email.trim().toLowerCase(); t.status = 'Active'; S.modal = null; S.err = {}; render(); toast('Password set — ' + t.name + ' can sign in now.');
+      t.email = d.email.trim().toLowerCase(); if (t.status === 'Invited') t.status = 'Active'; S.modal = null; S.err = {}; render(); toast('Password set — ' + t.name + ' can sign in now.');
     } catch (x) { fail({ 'd.spw.next': x && x.message ? x.message : 'Could not set the password. Wait a moment and try again.' }); }
   },
   // Ask before removing a member.

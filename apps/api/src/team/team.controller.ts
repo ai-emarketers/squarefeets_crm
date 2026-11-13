@@ -1,33 +1,44 @@
-import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post } from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionsService } from '../auth/permissions.service';
+// Team endpoints (all under /api/team, need the Team module permission: read for GET, write for the rest):
+//   GET    /team                  list members (no sensitive fields)
+//   POST   /team                  add a member
+//   PATCH  /team/:name            edit a member (only the fields you send)
+//   POST   /team/:name/status     { status: 'Active' | 'Disabled' }  activate / deactivate
+//   DELETE /team/:name            remove a member
+//   POST   /team/:name/password   { password, email? }  set or reset a sign-in password (Owner/Admin only)
+// The rules (owner protection, no self-lockout, unique email …) are in TeamService.
+import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post } from '@nestjs/common';
 import { AuthUser, CurrentUser, Perm } from '../auth/auth.decorators';
+import { MemberUpdateDto, SetPasswordDto, StatusDto, TeamMemberDto } from './team.dto';
+import { TeamService } from './team.service';
 
-// Team endpoints: GET /api/team (names/roles) and POST /api/team/:name/password.
 @Controller('team')
 @Perm('team')
 export class TeamController {
-  constructor(private prisma: PrismaService, private perms: PermissionsService) {}
+  constructor(private team: TeamService) {}
 
-  // List team members without any sensitive fields.
-  @Get() async list() {
-    const rows = await this.prisma.user.findMany({ orderBy: { createdAt: 'asc' } });
-    return rows.map((u) => ({ id: u.id, name: u.name, role: u.role, email: u.email, status: u.status }));
+  @Get() list() { return this.team.list(); }
+
+  @Post() async create(@Body() b: TeamMemberDto, @CurrentUser() me: AuthUser) {
+    const u = await this.team.save(me, b, 'create');
+    return { id: u.id, name: u.name, role: u.role, email: u.email, status: u.status };
   }
 
-  /** Owner/admin sets (or resets) a team member's sign-in password. Team members are created from Settings → Team. */
-  @Post(':name/password')
-  async setPassword(@Param('name') name: string, @Body() b: { password: string; email?: string }, @CurrentUser() me: AuthUser) {
-    // only Owner/Admin may set passwords; the Owner's password can only be set by the Owner
-    if (me.role !== 'Owner' && me.role !== 'Admin') throw new ForbiddenException('Only the owner or an admin can set passwords.');
-    if (!b.password || b.password.length < 8) throw new ForbiddenException('Password must be at least 8 characters.');
-    // look the member up by name (names are unique)
-    const u = await this.prisma.user.findUnique({ where: { name } });
-    if (!u) throw new NotFoundException();
-    if (u.role === 'Owner' && me.role !== 'Owner') throw new ForbiddenException();
-    // store the bcrypt hash (never the plain password), activate the account and optionally set the sign-in email
-    await this.prisma.user.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(b.password, 10), status: 'Active', ...(b.email ? { email: b.email.toLowerCase() } : {}) } });
+  @Patch(':name') async update(@Param('name') name: string, @Body() b: MemberUpdateDto, @CurrentUser() me: AuthUser) {
+    const u = await this.team.save(me, { ...b, name }, 'update');
+    return { id: u.id, name: u.name, role: u.role, email: u.email, status: u.status };
+  }
+
+  @Post(':name/status') async status(@Param('name') name: string, @Body() b: StatusDto, @CurrentUser() me: AuthUser) {
+    const u = await this.team.save(me, { name, status: b.status }, 'update');
+    return { name: u.name, status: u.status };
+  }
+
+  @Delete(':name') async remove(@Param('name') name: string, @CurrentUser() me: AuthUser) {
+    if (!(await this.team.remove(me, name))) throw new NotFoundException('Team member not found.');
     return { ok: true };
+  }
+
+  @Post(':name/password') setPassword(@Param('name') name: string, @Body() b: SetPasswordDto, @CurrentUser() me: AuthUser) {
+    return this.team.setPassword(me, name, b.password, b.email);
   }
 }

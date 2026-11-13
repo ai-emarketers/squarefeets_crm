@@ -15,10 +15,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
   // Runs after the token is valid; the returned object becomes request.user.
-  async validate(payload: { sub: string }) {
+  async validate(payload: { sub: string; iat?: number }) {
     const u = await this.prisma.user.findUnique({ where: { id: payload.sub } });
     // Re-check the DB each time so a disabled/deleted user is locked out immediately.
     if (!u || ['Disabled', 'Inactive'].includes(u.status)) throw new UnauthorizedException();
+    // Tokens issued before the last password reset / deactivation are dead (iat is in whole seconds, so compare in seconds).
+    if (u.sessionsValidFrom && (payload.iat ?? 0) < Math.floor(u.sessionsValidFrom.getTime() / 1000)) throw new UnauthorizedException();
     return { id: u.id, name: u.name, role: u.role, email: u.email, seeNumbers: u.seeNumbers };
   }
 }

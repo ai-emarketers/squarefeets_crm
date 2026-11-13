@@ -15,6 +15,9 @@ import { BrokerageService } from '../brokerage/brokerage.service';
 import { CrudService } from '../crud/crud.service';
 import { deepMask } from '../common/mask';
 import { removeFile } from '../files/files.util';
+import { TeamService } from '../team/team.service';
+import { ExportsService } from '../exports/exports.service';
+import { AuditService } from '../audit/audit.service';
 
 // StateService — the bridge between the web app's in-memory state and the database.
 //  - bootstrap(): read everything the signed-in user may see.
@@ -33,7 +36,7 @@ const COLLECTIONS: [string, string, string, string][] = [
   ['brok', 'brokerage', 'brokerage', 'deal'],
 ];
 /** Small collections stored as JSON in KvStore. */
-const KV_KEYS = ['mreq', 'alerts', 'viewLog', 'exportReq', 'exportLog', 'imports', 'roles'];
+const KV_KEYS = ['mreq', 'alerts', 'viewLog', 'exportLog', 'imports', 'roles']; // (export requests now have their own table: ExportRequest)
 // Organization keys stored in real columns; any other org key is kept in the `settings` JSON.
 const ORG_COLUMNS = ['name', 'rera', 'gstin', 'city', 'state', 'country', 'bank', 'persona', 'notif'];
 
@@ -45,6 +48,7 @@ export class StateService {
     private prisma: PrismaService, private perms: PermissionsService, private auth: AuthService,
     projects: ProjectsService, properties: PropertiesService, leads: LeadsService, prospects: ProspectsService,
     requirements: RequirementsService, visits: VisitsService, followups: FollowUpsService, deals: DealsService, brokerage: BrokerageService,
+    private team: TeamService, private exports: ExportsService, private audit: AuditService,
   ) {
     this.svc = { projects, properties, leads, prospects, requirements, visits, followups, deals, brokerage } as any;
   }
@@ -69,9 +73,13 @@ export class StateService {
     out.amen = await this.prisma.amenity.findMany({ orderBy: { cat: 'asc' } });
     // Team members shown in Settings and used for assignee dropdowns.
     out.team = (await this.prisma.user.findMany({ orderBy: { createdAt: 'asc' } })).map((u) => this.teamOut(u, see));
-    // Small JSON collections (mask requests, alerts, view log, export requests/log, imports, roles).
+    // Small JSON collections (mask requests, alerts, view log, export log, imports, roles).
     const kv = await this.prisma.kvStore.findMany();
     for (const k of KV_KEYS) out[k] = (kv.find((x) => x.key === k)?.value as any) ?? [];
+    // Export approval requests (own table): approvers get all of them, everyone else only their own.
+    out.exportReq = await this.exports.list(user);
+    // Recent activity (audit log) for the Team screen — only for users who can open the Team module.
+    out.audit = profile.levels.team === 'none' ? [] : await this.audit.recent(30);
     // Document metadata grouped by scope (e.g. 'prop:RS001'); the binary is fetched separately via /api/files.
     out.files = {};
     for (const f of await this.prisma.fileRecord.findMany({ orderBy: { createdAt: 'asc' } })) {
@@ -84,7 +92,7 @@ export class StateService {
 
   // Shape a user row like the prototype's team member object (never includes the password hash).
   teamOut(u: any, see: boolean) {
-    const o: any = { name: u.name, role: u.role, phone: u.phone, corp: u.corpPhone, alt: u.altPhone, email: u.email || '', status: u.status, leads: 0, seeNumbers: u.seeNumbers };
+    const o: any = { name: u.name, role: u.role, phone: u.phone, corp: u.corpPhone, alt: u.altPhone, email: u.email || '', status: u.status, leads: 0, seeNumbers: u.seeNumbers, last: u.lastLoginAt ? u.lastLoginAt.toISOString() : '' };
     return o;
   }
   // Shape a FileRecord row like the prototype's file object; hasBlob says whether a real upload exists.
@@ -123,9 +131,11 @@ export class StateService {
     // 4) Amenity master list.
     if (changes?.amen) await guard('amen', () => this.saveAmen(user, changes.amen));
     // 5) Team members.
-    if (changes?.team) await guard('team', () => this.saveTeam(user, changes.team));
+    if (changes?.team) await guard('team', () => this.saveTeam(user, changes.team, rejected));
     // 6) Small JSON collections (whitelisted keys only).
     if (changes?.kv) for (const k of Object.keys(changes.kv)) if (KV_KEYS.includes(k)) await guard(k, () => this.prisma.kvStore.upsert({ where: { key: k }, create: { key: k, value: changes.kv[k] }, update: { value: changes.kv[k] } }));
+    // 6b) Export approval requests: turned into real create / approve / reject operations, each permission-checked.
+    if (changes?.kv?.exportReq) await guard('exportReq', () => this.exports.syncFromClient(user, changes.kv.exportReq, (id, reason) => rejected.push({ c: 'exportReq', id, reason })));
     // 7) Document metadata (adds/removes).
     if (changes?.files) await guard('files', () => this.saveFiles(user, changes.files));
     this.perms.invalidate();   // permission matrix may have changed — drop the cache
@@ -153,19 +163,13 @@ export class StateService {
     for (const id of ch.del || []) await this.prisma.amenity.deleteMany({ where: { id } });
   }
 
-  // Add/edit/remove team members. The Owner row can only be edited by the Owner and can never be deleted.
-  private async saveTeam(user: AuthUser, ch: any) {
+  // Add/edit/remove team members. The rules (owner protection, no self-lockout, unique email …) live in TeamService;
+  // each member is its own operation so one refusal does not block the others.
+  private async saveTeam(user: AuthUser, ch: any, rejected: { c: string; id?: string; reason: string }[]) {
     if ((await this.perms.level(user, 'team')) !== 'write') throw new ForbiddenException('No write access to team');
-    for (const t of ch.put || []) {
-      const existing = await this.prisma.user.findUnique({ where: { name: t.name } });
-      if (existing?.role === 'Owner' && user.role !== 'Owner') continue; // only the owner edits the owner
-      const data = { name: t.name, role: existing?.role === 'Owner' ? 'Owner' : t.role || 'Agent', phone: String(t.phone || ''), corpPhone: String(t.corp || ''), altPhone: String(t.alt || ''), email: t.email ? String(t.email).toLowerCase() : null, status: t.status || 'Active', seeNumbers: !!t.seeNumbers };
-      // keep the stored number if the client sent back a masked one
-      for (const k of ['phone', 'corpPhone', 'altPhone']) if ((data as any)[k].includes('•') && existing) (data as any)[k] = (existing as any)[k];
-      if (existing) await this.prisma.user.update({ where: { id: existing.id }, data });
-      else await this.prisma.user.create({ data: { ...data, status: t.status || 'Invited' } });
-    }
-    for (const name of ch.del || []) await this.prisma.user.deleteMany({ where: { name, role: { not: 'Owner' } } });
+    const attempt = async (id: string, fn: () => Promise<any>) => { try { await fn(); } catch (e: any) { rejected.push({ c: 'team', id, reason: e?.message || 'failed' }); } };
+    for (const t of ch.put || []) await attempt(t?.name, () => this.team.save(user, t));
+    for (const name of ch.del || []) await attempt(name, () => this.team.remove(user, String(name)));
   }
 
   // Save document metadata. The scope prefix (prop/proj/lead/...) decides which module's write permission is needed.

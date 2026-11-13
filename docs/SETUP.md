@@ -123,8 +123,9 @@ Then open **http://localhost:3000** and sign in with the Owner login from sectio
 
 ## 6. Give a team member a login
 
-1. Sign in as the Owner and add the person in **Settings → Team** (name, role, phone, **email**).
-2. Set their password (the Owner or an Admin can do this). In PowerShell, with the API running:
+1. Sign in as the Owner and open **Team → Add member** (name, role, phone, **email**).
+2. The app then asks you to set their password (the Owner or an Admin can do this; later use **Reset password** on the same screen).
+   Prefer the screen. The same thing from PowerShell, with the API running:
 
 ```powershell
 $login = Invoke-RestMethod -Method Post -Uri http://localhost:4000/api/auth/login `

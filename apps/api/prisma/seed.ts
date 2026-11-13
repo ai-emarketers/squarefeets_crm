@@ -64,7 +64,7 @@ async function main() {
   const password = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe@123';
 
   // wipe (idempotent re-seed)
-  for (const m of ['kvStore', 'fileRecord', 'brokerage', 'deal', 'followUp', 'visit', 'requirement', 'prospect', 'lead', 'property', 'project', 'amenity', 'counter', 'user', 'organization']) {
+  for (const m of ['kvStore', 'exportRequest', 'auditLog', 'fileRecord', 'brokerage', 'deal', 'followUp', 'visit', 'requirement', 'prospect', 'lead', 'property', 'project', 'amenity', 'counter', 'user', 'organization']) {
     await (prisma as any)[m].deleteMany({});
   }
 
@@ -100,8 +100,12 @@ async function main() {
   await many(brok, seed.brok);
 
   // --- small JSON collections (mask requests, alerts, view/export logs, imports, roles) ---
-  for (const k of ['mreq', 'alerts', 'viewLog', 'exportReq', 'exportLog', 'imports', 'roles']) {
+  for (const k of ['mreq', 'alerts', 'viewLog', 'exportLog', 'imports', 'roles']) {
     await prisma.kvStore.create({ data: { key: k, value: shift(seed[k] ?? []) } });
+  }
+  // --- export approval requests live in their own table (demo data has none) ---
+  for (const r of shift(seed.exportReq ?? [])) {
+    await prisma.exportRequest.create({ data: { id: r.id, kind: r.kind, filters: r.f ?? {}, rowCount: r.n ?? 0, requestedBy: r.by, requestedAt: new Date(r.at), status: r.status || 'Pending' } });
   }
   // --- document metadata (no binaries are seeded) ---
   for (const scope of Object.keys(seed.files)) {

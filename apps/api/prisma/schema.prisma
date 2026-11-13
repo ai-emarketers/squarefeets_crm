@@ -46,6 +46,8 @@ model User {
   status       String   @default("Active") // Active | Invited | Disabled
   seeNumbers   Boolean  @default(false) // per-user override to see full phone numbers
   passwordHash String? // bcrypt hash; null until a password is set
+  lastLoginAt       DateTime? // set on every successful sign-in (shown as "Last sign-in" on the Team screen)
+  sessionsValidFrom DateTime? // sign-in tokens issued before this moment are rejected (set on password reset / deactivation / role change)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -274,4 +276,34 @@ model KvStore {
   key       String   @id // collection name, e.g. alerts
   value     Json     @default("[]") // the whole collection as JSON
   updatedAt DateTime @updatedAt
+}
+
+// Export approval requests. When Settings → "Exports need approval" is on, a user who lacks the `approveExports` action
+// files a request here and an Admin/Manager approves or rejects it. Replaces the old `exportReq` JSON in KvStore.
+model ExportRequest {
+  id          String    @id // same id the web app generates (e.g. ex1731500000000)
+  kind        String // properties | leads | prospects
+  filters     Json      @default("{}") // the filter choices made on the Export screen
+  rowCount    Int       @default(0) // number of rows the export would contain
+  requestedBy String // User.name of the requester
+  requestedAt DateTime  @default(now())
+  status      String    @default("Pending") // Pending | Approved | Rejected | Downloaded
+  decidedBy   String? // User.name of the approver
+  decidedAt   DateTime?
+
+  @@index([status])
+  @@index([requestedBy])
+}
+
+// Append-only record of sensitive actions (team changes, password resets, export decisions). Never edited or deleted by the app.
+model AuditLog {
+  id     String   @id @default(cuid())
+  at     DateTime @default(now())
+  actor  String // User.name who did it
+  action String // e.g. team.create | team.update | team.status | team.remove | team.password.reset | account.password.change | export.request | export.decide
+  target String   @default("") // who/what it was done to (a team member's name, an export request id …)
+  detail Json     @default("{}") // small before/after facts; never contains passwords
+
+  @@index([at])
+  @@index([target])
 }

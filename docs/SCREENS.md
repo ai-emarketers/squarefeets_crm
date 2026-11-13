@@ -18,9 +18,9 @@ Edit and delete follow the rules in the setup guide: nothing that other records 
 | Brokerage | `/brokerage` | (created with a deal) | `/brokerage/:deal` | Inline (split, deductions) | Record payment, invoice, waive / write off |
 | AI capture | `/capture` | — | — | — | Turn text / call / screenshot into a lead |
 | Import | `/import` | — | — | — | CSV import |
-| Export | `/export` | — | — | — | CSV export; request / approve / download when approval is on |
+| Export | `/export` | — | — | — | CSV export; request / approve / download when approval is on (decisions are checked and logged on the server) |
 | Masters | `/masters` | add item | — | — | Dropdown lists, amenities, change requests |
-| **Team** | `/team` | "Add member" dialog | — | Edit dialog | Set / reset password, deactivate, remove, phone-number access, roles & permissions matrix |
+| **Team** | `/team` | "Add member" dialog | — | Edit dialog | Set / reset password, deactivate, remove, phone-number access, last sign-in, roles & permissions matrix, recent activity |
 | **My account** | `/account` | — | — | — | Change your own password, sign out |
 | Settings | `/settings` | — | — | Organisation, region, notifications | Portal switches, export-approval switch, view log |
 | Public upload | `/upload/...` | — | — | — | Document upload page opened from a request link (no sign-in) |

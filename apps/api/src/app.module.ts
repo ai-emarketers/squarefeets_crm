@@ -13,6 +13,8 @@ import { FollowUpsModule } from './followups/followups.module';
 import { DealsModule } from './deals/deals.module';
 import { BrokerageModule } from './brokerage/brokerage.module';
 import { TeamModule } from './team/team.module';
+import { ExportsModule } from './exports/exports.module';
+import { AuditModule } from './audit/audit.module';
 import { FilesModule } from './files/files.module';
 import { StateModule } from './state/state.module';
 import { HealthController } from './health.controller';
@@ -20,10 +22,10 @@ import { HealthController } from './health.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }), // loads apps/api/.env into process.env
-    PrismaModule, AuthModule,                 // global infrastructure: database + authentication
+    PrismaModule, AuditModule, AuthModule,    // global infrastructure: database, audit log, authentication
     // one module per business area
     ProjectsModule, PropertiesModule, LeadsModule, ProspectsModule, RequirementsModule, VisitsModule,
-    FollowUpsModule, DealsModule, BrokerageModule, TeamModule, FilesModule,
+    FollowUpsModule, DealsModule, BrokerageModule, TeamModule, ExportsModule, FilesModule,
     StateModule, // bootstrap + sync endpoints used by the web app (depends on the modules above)
   ],
   controllers: [HealthController],
