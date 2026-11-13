@@ -271,7 +271,7 @@ export async function runQa(cfg = {}) {
   suite = '7 Web pages';
   if (isNode && !cfg.web) skip('web page checks', 'WEB_URL not set');
   else {
-    const routes = ['/login', '/dashboard', '/projects', '/projects/new', '/properties', '/properties/new', '/leads', '/prospects', '/prospects/new', '/requirements', '/requirements/new', '/visits', '/followups', '/deals', '/brokerage', '/reports', '/settings', '/team'];
+    const routes = ['/login', '/dashboard', '/team', '/account', '/projects', '/projects/new', '/properties', '/properties/new', '/leads', '/prospects', '/prospects/new', '/requirements', '/requirements/new', '/visits', '/followups', '/deals', '/brokerage', '/reports', '/settings', '/team'];
     for (const p of routes) {
       try {
         const res = await fetch(WEB + p); const html = await res.text();

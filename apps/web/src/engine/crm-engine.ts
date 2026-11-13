@@ -380,11 +380,11 @@ const prosById = (id) => S.prospects.find((p) => p.id === id);
 const propLabel = (p) => `${p.id} · ${p.title}`;
 
 // Sidebar items: [route, label, icon, permission module].
-const NAV = [['dashboard', 'Dashboard', 'dash', ''], ['projects', 'Projects', 'proj', 'projects'], ['properties', 'Properties', 'prop', 'properties'], ['leads', 'Leads', 'lead', 'leads'], ['prospects', 'Prospects', 'user', 'prospects'], ['requirements', 'Requirements', 'req', 'requirements'], ['matches', 'Matches', 'match', 'requirements'], ['visits', 'Visits', 'cal', 'visits'], ['followups', 'Follow-ups', 'clock', 'visits'], ['deals', 'Deals', 'deal', 'deals'], ['brokerage', 'Brokerage', 'rupee', 'brokerage'], ['capture', 'AI capture', 'match', 'leads'], ['settings', 'Settings', 'gear', '']];
+const NAV = [['dashboard', 'Dashboard', 'dash', ''], ['projects', 'Projects', 'proj', 'projects'], ['properties', 'Properties', 'prop', 'properties'], ['leads', 'Leads', 'lead', 'leads'], ['prospects', 'Prospects', 'user', 'prospects'], ['requirements', 'Requirements', 'req', 'requirements'], ['matches', 'Matches', 'match', 'requirements'], ['visits', 'Visits', 'cal', 'visits'], ['followups', 'Follow-ups', 'clock', 'visits'], ['deals', 'Deals', 'deal', 'deals'], ['brokerage', 'Brokerage', 'rupee', 'brokerage'], ['capture', 'AI capture', 'match', 'leads'], ['team', 'Team', 'users', 'team'], ['settings', 'Settings', 'gear', '']];
 // Whether a sidebar item should be shown for this user's permissions.
 const navOk = (n) => (n[0] === 'capture' ? canW('leads') : !n[3] || canR(n[3]));
 // Route -> permission module, used to block screens the role cannot open.
-const ROUTE_MOD = { projects: 'projects', properties: 'properties', leads: 'leads', prospects: 'prospects', requirements: 'requirements', matches: 'requirements', visits: 'visits', followups: 'visits', deals: 'deals', brokerage: 'brokerage', capture: 'leads' };
+const ROUTE_MOD = { projects: 'projects', properties: 'properties', leads: 'leads', prospects: 'prospects', requirements: 'requirements', matches: 'requirements', visits: 'visits', followups: 'visits', deals: 'deals', brokerage: 'brokerage', capture: 'leads', team: 'team' };
 
 // Search box state path + placeholder for each list screen.
 const LISTQ = { projects: ['q.projects', 'Search projects…'], properties: ['q.props', 'Search properties by ID, locality, owner…'], leads: ['q.leads', 'Search leads by name or requirement…'], prospects: ['q.prospects', 'Search prospects…'], deals: ['q.deals', 'Search deals by ID, prospect, property…'], brokerage: ['q.brok', 'Search brokerage by deal, prospect…'] };
@@ -418,6 +418,7 @@ function shell(R, body) {
     ${canA('import') ? `<a class="nav${on === 'import' ? ' on' : ''}" href="#/import">${ico('upload', 20)}Import data</a>` : ''}
     ${canExportAny() ? `<a class="nav${on === 'export' ? ' on' : ''}" href="#/export">${ico('download', 20)}Export data</a>` : ''}
     ${canA('masters') ? `<a class="nav${on === 'masters' ? ' on' : ''}" href="#/masters">${ico('shield', 20)}Masters</a>` : ''}
+    <a class="nav${on === 'account' ? ' on' : ''}" href="#/account">${ico('user', 20)}My account</a>
     <button type="button" class="nav" data-act="logout" style="border:0;background:none;width:100%;text-align:left;font:inherit">${ico('close', 20)}Sign out</button>
   </aside>
   <div class="main">
@@ -1543,7 +1544,7 @@ function runExport(kind, f, who) { const t = expRows(kind, f); const ok = dlFile
 // Export screen with request/approval flow.
 function exportView() {
   const E = S.exp; const kinds = Object.keys(EXP_KINDS).filter((k) => canA(EXP_KINDS[k][1])); if (!kinds.includes(E.kind)) E.kind = kinds[0] || 'properties';
-  const t = expRows(E.kind, E); const needsAppr = false; const mine = S.exportReq.filter((r) => r.by === ME().name); const queue = S.exportReq.filter((r) => r.status === 'Pending');
+  const t = expRows(E.kind, E); const needsAppr = !!S.org.exportApproval && !canA('approveExports'); const mine = S.exportReq.filter((r) => r.by === ME().name); const queue = S.exportReq.filter((r) => r.status === 'Pending');
   const srcOpts = [['all', 'Any source'], ...['Owner', 'Broker', 'Portal', '99acres', 'Magicbricks', 'Housing.com', 'Direct Reference', 'Friend & Family', 'Associate Broker'].map((x) => [x, x])];
   return page('Export data', 'Choose what to export and filter it first. Import and export are separate.', '',
     `<div class="grid2"><div class="stack">${card(`<h2>What to export</h2><div class="chips">${kinds.map((k) => chip(EXP_KINDS[k][0], E.kind === k, `data-act="setf" data-p="exp.kind" data-v="${k}"`)).join('')}</div>
@@ -1553,7 +1554,7 @@ function exportView() {
       ${needsAppr ? `<div class="sub" style="font-size:12px">Exports from your role need approval from an Admin or Manager first.</div>` : ''}
       <div>${btn(needsAppr ? 'Request export' : 'Export as CSV', { i: needsAppr ? 'clock' : 'download', a: 'data-act="doExport"' })}</div>`)}
     ${card(`<h2>Preview</h2><div class="scroll-x"><table class="tbl"><thead><tr>${t.head.slice(0, 6).map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.slice(0, 6).map((r) => `<tr>${r.slice(0, 6).map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="sub" style="font-size:12px">First ${Math.min(6, t.rows.length)} of ${t.rows.length} rows, first 6 columns.</div>`)}</div>
-    <div class="stack">${mine.length ? card(`<h2>My export requests</h2>${mine.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(dateTxt(r.at))}</div></div>${badge(r.status, r.status === 'Approved' ? 'ok' : r.status === 'Rejected' ? 'err' : 'warn')}${r.status === 'Approved' ? btn('Download', { k: 'ghost sm', a: `data-act="expDl" data-id="${r.id}"` }) : ''}</div>`).join('')}`) : ''}
+    <div class="stack">${canA('approveExports') && queue.length ? card(`<h2>Export requests waiting for you</h2>${queue.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(r.by)} · ${esc(dateTxt(r.at))}</div></div>${btn('Reject', { k: 'ghost sm', a: `data-act="expAppr" data-id="${r.id}" data-v="Rejected"` })}${btn('Approve', { k: 'sm', a: `data-act="expAppr" data-id="${r.id}" data-v="Approved"` })}</div>`).join('')}`) : ''}${mine.length ? card(`<h2>My export requests</h2>${mine.map((r) => `<div class="head" style="min-height:44px"><div class="grow"><b>${esc(EXP_KINDS[r.kind][0])}</b> · ${r.n} rows<div class="sub" style="font-size:12px">${esc(dateTxt(r.at))}</div></div>${badge(r.status, r.status === 'Approved' ? 'ok' : r.status === 'Rejected' ? 'err' : 'warn')}${r.status === 'Approved' ? btn('Download', { k: 'ghost sm', a: `data-act="expDl" data-id="${r.id}"` }) : ''}</div>`).join('')}`) : ''}
     ${card(`<h2>Recent exports</h2><div class="list" style="margin:0 -20px -20px">${S.exportLog.slice(0, 8).map((x) => `<div class="li"><div class="grow"><b>${esc(x.who)}</b> exported ${esc(x.what)}<div class="sub" style="font-size:12px">${x.n} rows</div></div><span class="sub">${esc(fmtStamp(x.at))}</span></div>`).join('') || '<div class="li sub">No exports yet.</div>'}</div>`)}</div></div>`);
 }
 /* ---------------- masters (admin console) */
@@ -1632,6 +1633,7 @@ function settingsView() {
     <div class="stack">${card(`<h2>Planned integrations</h2><div class="list" style="margin:0 -20px -20px">${[['WhatsApp Business API', 'Send and receive on the official API — one-time setup of about ₹35,000, billed by your provider.'], ['Call-recording platform', 'Pull call recordings in so AI capture can turn calls into leads.'], ['AI capture add-on', 'Voice, call and screenshot capture using low-cost models. Paid add-on.']].map((x) => `<div class="li"><div class="grow"><b>${x[0]}</b><div class="sub" style="font-size:12px">${x[1]}</div></div>${badge('Planned')}</div>`).join('')}</div>`)}
     ${card(`<h2>Appearance</h2><div class="seg" style="align-self:flex-start">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map((x) => `<button type="button" class="${th === x[0] ? 'on' : ''}" data-act="theme" data-v="${x[0]}">${x[1]}</button>`).join('')}</div>`)}
     ${card(`<h2>Notifications</h2>${[['New leads', 'leads'], ['Visit reminders', 'visits'], ['Follow-up reminders', 'fus'], ['Deal updates', 'deals'], ['Matching alerts on new properties', 'match']].map((x) => chk(O.notif[x[1]], x[0], `data-act="notifTog" data-k="${x[1]}"`)).join('')}`)}
+    ${card(`<h2>Access &amp; approvals</h2>${chk(!!O.exportApproval, 'Staff need approval before exporting data', adm ? 'data-act="exportApprovalTog"' : 'disabled')}<div class="sub" style="font-size:12px">When on, people without the “approve exports” permission send a request that an Admin or Manager approves on the Export page.${adm ? '' : ' Only people with team access can change this.'}</div><div class="head" style="gap:8px;flex-wrap:wrap">${canR('team') ? btn('Team &amp; permissions', { k: 'sec sm', href: '#/team' }) : ''}${btn('My account', { k: 'sec sm', href: '#/account' })}</div>`)}
     ${card(`<h2>Your data</h2><div class="sub">Everything you enter is saved to your CRM database and is available on every device you sign in from.</div>`)}</div></div>`);
 }
 /* ---------------- party upload (opened from a document-request link) */
@@ -1717,7 +1719,7 @@ function modalExtra(m, wrap, cancel, D) {
       ${chk(c.nri, 'NRI prospect — adds country &amp; time zone', 'data-act="togb" data-p="d.prospect.nri"')}${c.nri ? `<div class="row">${fld('Country', 'd.prospect.country', { req: 1, ph: 'e.g. UAE' })}${fld('Time zone', 'd.prospect.tz', { opts: ['GMT+4 · Gulf', 'GMT+0 · UK', 'GMT-5 · US East', 'GMT-8 · US West', 'GMT+8 · Singapore', 'Other'] })}</div>${fld('Best time to call', 'd.prospect.bestTime', { ph: 'e.g. 9–11 pm IST' })}` : ''}
       <div class="fld"><span class="l">Preferred contact</span>${chipSet('d.prospect.contact', ['Call', 'WhatsApp', 'Email'], c.contact)}</div>`, cancel + (owner ? btn('Save & add property', { k: 'ghost', a: 'data-act="saveProspect" data-prop="1"' }) : btn('Save & add requirement', { k: 'ghost', a: 'data-act="saveProspect" data-req="1"' })) + btn('Save prospect', { a: 'data-act="saveProspect"' }));
     }
-    case 'invite': return wrap('Add team member', `<div class="row">${fld('Full name', 'd.invite.name', { req: 1 })}${fld('Email', 'd.invite.email', { hint: 'The invite goes here' })}</div><div class="row">${fld('Mobile', 'd.invite.phone', { pre: '+91' })}${fld('Corporate number', 'd.invite.corp', { pre: '+91' })}</div>${fld('Alternative number', 'd.invite.alt', { pre: '+91' })}${fld('Role', 'd.invite.role', { opts: ROLES })}<div class="sub" style="font-size:12px">What this role can see or change is set under Team → Roles &amp; permissions.</div>`, cancel + btn('Send invite', { a: 'data-act="doInvite"' }));
+    case 'invite': return wrap('Add team member', `<div class="row">${fld('Full name', 'd.invite.name', { req: 1 })}${fld('Email', 'd.invite.email', { hint: 'Used to sign in' })}</div><div class="row">${fld('Mobile', 'd.invite.phone', { pre: '+91' })}${fld('Corporate number', 'd.invite.corp', { pre: '+91' })}</div>${fld('Alternative number', 'd.invite.alt', { pre: '+91' })}${fld('Role', 'd.invite.role', { opts: ROLES })}<div class="sub" style="font-size:12px">What this role can see or change is set under Team → Roles &amp; permissions.</div>`, cancel + btn('Add member', { a: 'data-act="doInvite"' }));
     case 'share': return shareModal(m, wrap, cancel, D);
     case 'reveal': {
       const r = m.rec; return wrap('Reveal number', `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>Every reveal is logged with your name and the time. Numbers cannot be downloaded in bulk.</div></div><div class="sub">${esc(m.what)} · ${esc(m.label)}</div>`, cancel + btn('Show number', { a: `data-act="doReveal"` }));
@@ -1753,7 +1755,7 @@ function modalHtml() {
     case 'lost': return wrap('Mark as Lost', `<div class="note" style="background:var(--err-soft);border-color:var(--err);color:var(--err)">${ico('info', 18)}<div>You are about to mark this deal as Lost — are you sure?</div></div>${fld('Reason', 'd.lost.reason', { opts: ['Bought elsewhere (buyer withdrew)', 'Owner withdrew', 'Price gap', 'Title not clear', 'Loan rejected', 'Others'] })}${fld('Notes', 'd.lost.note', { rows: 2 })}${chk(D.lost.ret, 'Return property to Available', 'data-act="togb" data-p="d.lost.ret"')}${chk(D.lost.react, 'Reactivate requirement', 'data-act="togb" data-p="d.lost.react"')}<div class="sub" style="font-size:12px">Marked as lost; the reason is kept on the record.</div>`, cancel + btn('Mark as Lost', { k: 'danger', a: `data-act="doLost" data-id="${m.id}"` }));
     case 'resched': return wrap('Reschedule visit', `<div class="row">${fld('New date', 'd.resched.date', { type: 'date' })}${fld('New time', 'd.resched.time', { type: 'time' })}</div><div class="sub" style="font-size:12px">Only date and time change; the change is kept in the activity log.</div>`, cancel + btn('Reschedule', { a: `data-act="doResched" data-id="${m.id}"` }));
     case 'outcome': return wrap('How did it go?', `<div class="fld"><span class="l">Outcome</span>${chipSet('d.outcome.v', ['Very interested', 'Interested', 'Wants to think / see more', 'Not interested', 'Needs another visit'], D.outcome.v)}</div><div class="fld"><span class="l">What stood out?</span>${chipMulti('d.outcome.why', ['Loved location', 'Price high', 'Layout', 'Parking', 'Needs repairs'], D.outcome.why)}</div>${fld('Notes', 'd.outcome.note', { rows: 3 })}`, cancel + btn('Save outcome', { a: `data-act="doOutcome" data-id="${m.id}"` }));
-    case 'invite': return wrap('Invite member', `${fld('Mobile', 'd.invite.phone', { pre: '+91' })}${fld('Role', 'd.invite.role', { opts: ['Admin', 'Manager', 'Agent', 'Field staff'] })}`, cancel + btn('Send invite', { a: 'data-act="doInvite"' }));
+    case 'invite': return wrap('Invite member', `${fld('Mobile', 'd.invite.phone', { pre: '+91' })}${fld('Role', 'd.invite.role', { opts: ['Admin', 'Manager', 'Agent', 'Field staff'] })}`, cancel + btn('Add member', { a: 'data-act="doInvite"' }));
     case 'pay': return wrap('Record payment', `<div class="fld"><span class="l">Received from</span>${chipSet('d.pay.from', ['buyer', 'owner'], D.pay.from)}</div><div class="row">${fld('Amount', 'd.pay.amt', { pre: '₹' })}${fld('Mode', 'd.pay.mode', { opts: ['UPI', 'NEFT', 'Cheque', 'Cash', 'Card'] })}</div><div class="row">${fld('Date received', 'd.pay.date', { type: 'date' })}${fld('Reference / UTR', 'd.pay.ref')}</div>${fld('Note', 'd.pay.note', { rows: 2 })}`, cancel + btn('Save payment', { a: `data-act="doPay" data-id="${m.id}"` }));
     case 'invoice': { const b = S.brok.find((x) => x.deal === m.id); const s = brokState(b); const d = s.d; const p = propById(d.prop); const sale = d.kind === 'sale'; const payer = { buyer: prosById(d.cid).name, owner: p.owner }; const nm = { buyer: sale ? 'Buyer' : 'Tenant', owner: sale ? 'Owner' : 'Landlord' };
       return wrap('Invoices · ' + m.id, s.sides.filter((x) => x.base > 0).map((x) => `<div class="card" style="background:var(--bg);gap:8px"><div class="head"><b class="mono">${esc(b.inv ? b.inv[x.k] : '—')}</b><div class="grow"></div><span class="sub">Issued ${esc(b.inv ? b.inv.at : '')}</span></div><div class="sub" style="font-size:12px">From ${esc(S.org.name)} · RERA ${esc(S.org.rera)} · GSTIN 19AAAAA0000A1Z5 (sample)</div><div>Bill to <b>${esc(payer[x.k])}</b> <span class="sub">(${nm[x.k]})</span></div>${kv([['Brokerage — ' + propLabel(p), inr(x.base)], ['GST @18%', b.gst ? inr(x.gst) : 'Not applied'], ['Total', '<b>' + inr(x.tot) + '</b>'], ['Received', inr(x.rec)], ['Balance due', '<b>' + inr(x.pend) + '</b>'], ['Due date', esc(dayLbl(parseISO(b.due)))]])}</div>`).join(''), btn('Close', { k: 'sec', a: 'data-act="closeModal"' }) + btn('Send via WhatsApp', { k: 'ghost', i: 'chat', a: 'data-act="toast" data-t="Invoices sent on WhatsApp"' }) + btn('Download PDF', { a: 'data-act="toast" data-t="PDF download is available in the live product"' }), 640); }
@@ -1791,7 +1793,7 @@ function view(R) {
     case 'followups': return followupsView();
     case 'deals': return R.b === 'new' ? dealForm() : R.b ? dealDetail(R.b) : dealsView();
     case 'brokerage': return R.b ? brokDetail(R.b) : brokerageView();
-    case 'settings': return settingsView(); case 'import': return importView(); case 'export': return exportView(); case 'masters': return mastersView(); case 'capture': return captureView(); case 'upload': return uploadView(R);
+    case 'team': return teamView(); case 'account': return accountView(); case 'settings': return settingsView(); case 'import': return importView(); case 'export': return exportView(); case 'masters': return mastersView(); case 'capture': return captureView(); case 'upload': return uploadView(R);
     default: return page('Page not found', '', '', card(btn('Go to dashboard', { href: '#/dashboard' })));
   }
 }
@@ -1801,7 +1803,7 @@ function render() {
   let html; const auth = ['upload'].includes(R.a);
   try { html = view(R); if (!auth) html = shell(R, html); else html += modalHtml(); } catch (e) { html = `<pre style="padding:24px;white-space:pre-wrap">${esc(e.stack || e)}</pre>`; }
   host.innerHTML = html;
-  try { const nv = NAV.find((n) => n[0] === R.a); document.title = (nv ? nv[1] : R.a === 'login' ? 'Sign in' : 'SquareFeets') + ' · SquareFeets Realty CRM'; } catch (e) { }
+  try { const nv = NAV.find((n) => n[0] === R.a); document.title = (nv ? nv[1] : R.a === 'account' ? 'My account' : R.a === 'login' ? 'Sign in' : 'SquareFeets') + ' · SquareFeets Realty CRM'; } catch (e) { }
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null && el.setSelectionRange) el.setSelectionRange(ss, ss); } catch (e) { } } }
   try { document.querySelectorAll('table.tbl').forEach((t) => { const hs = [...t.querySelectorAll('thead th')].map((h) => h.textContent.trim()); t.querySelectorAll('tbody tr').forEach((r) => [...r.children].forEach((c, i) => { if (hs[i] && !c.hasAttribute('data-l')) c.setAttribute('data-l', hs[i]); })); }); } catch (e) { }
   window.scrollTo(0, sy);
@@ -2279,7 +2281,7 @@ Object.assign(ACTS, {
   // Invite a team member (creates the team row; set their password afterwards). (later version — overrides the earlier one above)
   doInvite() {
     const d = S.d.invite; if (!String(d.name || '').trim()) { toast('Enter the person’s name.'); return; }
-    S.team.push({ name: d.name.trim(), role: d.role, phone: '+91 ' + (d.phone || '—'), corp: '+91 ' + (d.corp || '—'), alt: d.alt ? '+91 ' + d.alt : '', email: d.email || '', status: 'Invited', leads: 0, seeNumbers: d.role !== 'Field staff' }); S.modal = null; toast('Invite sent to ' + (d.email || d.name));
+    S.team.push({ name: d.name.trim(), role: d.role, phone: '+91 ' + (d.phone || '—'), corp: '+91 ' + (d.corp || '—'), alt: d.alt ? '+91 ' + d.alt : '', email: d.email || '', status: 'Invited', leads: 0, seeNumbers: d.role !== 'Field staff' }); S.modal = null; toast('Added ' + d.name + ' — now set their password');
   },
   // Change a role's access level for a module (owner only).
   permLv(el) { const a = S.perms.lv[el.dataset.m]; a[Number(el.dataset.c)] = el.dataset.v; render(); },
@@ -2288,7 +2290,7 @@ Object.assign(ACTS, {
   // Toggle the 'see full numbers' override for a team member.
   seeNum(el) { const m = S.team.find((t) => t.name === el.dataset.n); m.seeNumbers = !m.seeNumbers; render(); },
   // Activate/disable a team member.
-  memberStatus(el) { const m = S.team.find((t) => t.name === el.dataset.n); m.status = m.status === 'Active' ? 'Inactive' : 'Active'; render(); },
+  memberStatus(el) { const m = S.team.find((t) => t.name === el.dataset.n); m.status = m.status === 'Disabled' || m.status === 'Inactive' ? 'Active' : 'Disabled'; render(); },
   // Demo reset is not available in the connected build (shows a note).
   resetDemo() { toast('Demo data is loaded from the server — run “npm run db:seed” to reset it.'); }
 });
@@ -2661,7 +2663,7 @@ Object.assign(ACTS, {
   // Invite a team member (creates the team row; set their password afterwards). (later version — overrides the earlier one above)
   doInvite() {
     const d = S.d.invite; const e = {}; if (!String(d.name || '').trim()) e['d.invite.name'] = 'Enter the person’s name.'; if (!String(d.email || '').trim() && !String(d.phone || '').trim()) e['d.invite.email'] = 'Add an email or a mobile number for the invite.'; if (d.role === 'Field staff' && !String(d.area || '').trim()) e['d.invite.area'] = 'Add the areas this person covers.'; if (Object.keys(e).length) { fail(e); return; }
-    S.team.push({ name: d.name.trim(), role: d.role, phone: '+91 ' + (d.phone || '—'), corp: '+91 ' + (d.corp || '—'), alt: d.alt ? '+91 ' + d.alt : '', email: d.email || '', area: d.role === 'Field staff' ? d.area : '', status: 'Invited', leads: 0, seeNumbers: d.role !== 'Field staff' }); S.modal = null; toast('Invite sent to ' + (d.email || d.name));
+    S.team.push({ name: d.name.trim(), role: d.role, phone: '+91 ' + (d.phone || '—'), corp: '+91 ' + (d.corp || '—'), alt: d.alt ? '+91 ' + d.alt : '', email: d.email || '', area: d.role === 'Field staff' ? d.area : '', status: 'Invited', leads: 0, seeNumbers: d.role !== 'Field staff' }); S.modal = null; toast('Added ' + d.name + ' — now set their password');
   }
 });
 // Saved reference to the previous modalExtra so the v5 version can extend it.
@@ -2704,7 +2706,7 @@ modalExtra = function (m, wrap, cancel, D) {
     }
     case 'invite': {
       const i = D.invite;
-      return wrap('Add team member', `<div class="row">${fld('Full name', 'd.invite.name', { req: 1 })}${fld('Email', 'd.invite.email', { hint: 'The invite goes here' })}</div><div class="row">${fld('Mobile', 'd.invite.phone', { pre: '+91' })}${fld('Corporate number', 'd.invite.corp', { pre: '+91' })}</div>${fld('Alternative number', 'd.invite.alt', { pre: '+91' })}${fld('Role', 'd.invite.role', { opts: ROLES, rer: 1 })}${i.role === 'Field staff' ? fld('Areas covered', 'd.invite.area', { req: 1, ph: 'e.g. Salt Lake, New Town', hint: 'Field staff only see leads and properties in these areas' }) : ''}${i.role === 'Admin' ? '<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">' + ico('info', 18) + '<div>Admins can see everything, change permissions and approve exports. Give this role sparingly.</div></div>' : ''}<div class="sub" style="font-size:12px">What this role can see or change is set under Team → Roles &amp; permissions.</div>`, cancel + btn('Send invite', { a: 'data-act="doInvite"' }));
+      return wrap('Add team member', `<div class="row">${fld('Full name', 'd.invite.name', { req: 1 })}${fld('Email', 'd.invite.email', { hint: 'Used to sign in' })}</div><div class="row">${fld('Mobile', 'd.invite.phone', { pre: '+91' })}${fld('Corporate number', 'd.invite.corp', { pre: '+91' })}</div>${fld('Alternative number', 'd.invite.alt', { pre: '+91' })}${fld('Role', 'd.invite.role', { opts: ROLES, rer: 1 })}${i.role === 'Field staff' ? fld('Areas covered', 'd.invite.area', { req: 1, ph: 'e.g. Salt Lake, New Town', hint: 'Field staff only see leads and properties in these areas' }) : ''}${i.role === 'Admin' ? '<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">' + ico('info', 18) + '<div>Admins can see everything, change permissions and approve exports. Give this role sparingly.</div></div>' : ''}<div class="sub" style="font-size:12px">What this role can see or change is set under Team → Roles &amp; permissions.</div>`, cancel + btn('Add member', { a: 'data-act="doInvite"' }));
     }
   }
   return _modalExtra50(m, wrap, cancel, D);
@@ -3226,6 +3228,7 @@ function deleteRecord(k, id) {
   if (R.scope) delete S.files[R.scope + ':' + id]; // its own documents
   if (k === 'deal') { const bi = S.brok.findIndex((b) => b.deal === id); if (bi >= 0) S.brok.splice(bi, 1); delete S.files['brok:' + id]; }
   if (k === 'property' || k === 'req') S.alerts = (S.alerts || []).filter((a) => a.prop !== id && a.req !== id); // match alerts
+  if (k === 'lead') S.alerts = (S.alerts || []).filter((a) => a.req !== 'LEAD-' + id); // a deleted lead must not keep a "fits <lead>" match alert
   if (k === 'req' && S.tab.matchReq === id) S.tab.matchReq = '';
 }
 
@@ -3302,6 +3305,134 @@ render = function () {
   if (!S.modal) clearModalEdits();
   if (S.d.edit.req) { const R = parse(); if (!(R.a === 'requirements' && R.b === 'new')) S.d.edit.req = null; }
   return _render60();
+};
+
+/* ------------------------------------------------------------ team, roles & my account (screens added in the screen review) */
+/* Team page: members (add / edit / set password / deactivate / remove) and the role-permission matrix.
+ * My account page: your details and "change password". Both save through the same /sync and /auth endpoints as the rest. */
+const LV_LABEL = { none: 'No access', read: 'View', write: 'Edit' };
+// Is the signed-in user the owner? (only the owner may change the permission matrix)
+const isOwner = () => ME().role === 'Owner';
+// '+91 98765 43210' -> '98765 43210' (the form shows the +91 prefix itself); '+91 —' -> ''
+const phoneIn = (v) => { const x = String(v || '').replace(/^\+91\s*/, '').trim(); return x === '—' || x === '-' ? '' : x; };
+// Typed digits -> stored text. A masked value that was not touched keeps what is already stored.
+const phoneOut = (orig, typed) => { const x = String(typed || '').trim(); if (!x) return '+91 —'; return x.includes('•') ? orig : '+91 ' + x; };
+const memberBadge = (st) => badge(st === 'Disabled' || st === 'Inactive' ? 'Deactivated' : st, st === 'Active' ? 'ok' : st === 'Invited' ? 'warn' : 'err');
+
+// Team: members table + roles & permissions.
+function teamView() {
+  const adm = canW('team'); const own = isOwner(); const meName = ME().name;
+  const members = S.team.map((t) => {
+    const isO = t.role === 'Owner'; const locked = isO && !own; const off = t.status === 'Disabled' || t.status === 'Inactive'; const n = esc(t.name);
+    const contact = [t.email, t.phone && phoneIn(t.phone) ? t.phone : ''].filter(Boolean).map(esc).join('<br>') || '—';
+    const acts = adm && !locked ? [
+      btn('Edit', { k: 'ghost sm', a: `data-act="editMember" data-n="${n}"` }),
+      btn(t.status === 'Invited' || !t.email ? 'Set password' : 'Reset password', { k: 'ghost sm', a: `data-act="setPw" data-n="${n}"` }),
+      !isO && t.name !== meName ? btn(off ? 'Activate' : 'Deactivate', { k: 'ghost sm', a: `data-act="memberStatus" data-n="${n}"` }) : '',
+      !isO && t.name !== meName ? btn('Remove', { k: 'ghost sm', a: `data-act="removeMember" data-n="${n}"` }) : '',
+    ].join('') : '<span class="sub">—</span>';
+    return `<tr><td><b>${n}</b>${t.name === meName ? ' <span class="sub">(you)</span>' : ''}${t.area ? `<div class="sub" style="font-size:12px">Covers ${esc(t.area)}</div>` : ''}</td><td>${esc(t.role)}</td><td>${contact}</td>
+      <td>${isO ? '<span class="sub">Always</span>' : adm ? chk(!!t.seeNumbers, 'Full numbers', `data-act="seeNum" data-n="${n}"`) : (t.seeNumbers ? 'Full numbers' : 'Masked')}</td>
+      <td>${memberBadge(t.status)}</td><td><div class="head" style="gap:6px;flex-wrap:wrap">${acts}</div></td></tr>`;
+  }).join('');
+  const roleHead = ROLES.map((r) => `<th>${esc(r)}</th>`).join('');
+  const modRows = S.perms.mods.map(([m, label]) => `<tr><td><b>${esc(label)}</b></td>${ROLES.map((r, c) => {
+    const v = (S.perms.lv[m] || [])[c] || 'none';
+    return `<td>${own ? `<div class="seg">${['none', 'read', 'write'].map((x) => `<button type="button" class="${v === x ? 'on' : ''}" data-act="permLv" data-m="${m}" data-c="${c}" data-v="${x}">${LV_LABEL[x]}</button>`).join('')}</div>` : badge(LV_LABEL[v], v === 'write' ? 'ok' : v === 'read' ? 'warn' : '')}</td>`;
+  }).join('')}</tr>`).join('');
+  const actRows = S.perms.act.map(([k, label, flags]) => `<tr><td><b>${esc(label)}</b></td>${ROLES.map((r, c) => `<td>${own ? chk(!!flags[c], '', `data-act="permAct" data-k="${k}" data-c="${c}" aria-label="${esc(label + ' — ' + r)}"`) : (flags[c] ? badge('Allowed', 'ok') : badge('Not allowed'))}</td>`).join('')}</tr>`).join('');
+  const act = adm ? btn('Add member', { i: 'plus', a: 'data-act="addMember"' }) : '';
+  return page('Team', S.team.length + ' member' + (S.team.length === 1 ? '' : 's') + ' · who can sign in and what they can do', act,
+    `<div class="stack">${card(`<h2>Members</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Contact</th><th>Phone numbers</th><th>Status</th><th>Actions</th></tr></thead><tbody>${members}</tbody></table></div>
+      <div class="sub" style="font-size:12px">New members sign in with their email and the password you set. “Deactivate” blocks sign-in but keeps their records; “Remove” deletes the sign-in. “Full numbers” lets that person see unmasked phone numbers.</div>`, 'flush')}
+    ${card(`<div class="head"><h2>Roles &amp; permissions</h2><div class="grow"></div>${own ? '' : badge('View only')}</div><div class="sub" style="font-size:12px">The owner always has full access. ${own ? 'Changes save automatically and apply to each person the next time they load the CRM.' : 'Only the owner can change these settings.'}</div>
+      <div class="scroll-x"><table class="tbl"><thead><tr><th>Module</th>${roleHead}</tr></thead><tbody>${modRows}</tbody></table></div>`, 'flush')}
+    ${card(`<h2>Special permissions</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>Permission</th>${roleHead}</tr></thead><tbody>${actRows}</tbody></table></div>`, 'flush')}</div>`);
+}
+
+// My account: details + change password.
+function accountView() {
+  const me = ME(); if (!S.d.pw) S.d.pw = { cur: '', next: '', again: '' };
+  return page('My account', 'Your sign-in details', '',
+    `<div class="grid2"><div class="stack">${card(`<h2>Profile</h2>${kv([['Name', esc(me.name)], ['Role', esc(me.role)], ['Email', esc(me.email || '—')], ['Mobile', esc(me.phone || '—')]])}<div class="sub" style="font-size:12px">To change your name, role or contact details, ask the owner or an Admin (Team page).</div>`)}</div>
+    <div class="stack">${card(`<h2>Change password</h2>${fld('Current password', 'd.pw.cur', { type: 'password' })}${fld('New password', 'd.pw.next', { type: 'password', hint: 'At least 8 characters' })}${fld('Confirm new password', 'd.pw.again', { type: 'password' })}<div>${btn('Update password', { a: 'data-act="doChangePw"' })}</div>`)}
+    ${card(`<h2>Session</h2><div class="sub">Sign out on this device.</div><div>${btn('Sign out', { k: 'sec', a: 'data-act="logout"' })}</div>`)}</div></div>`);
+}
+
+Object.assign(ACTS, {
+  // Open the add-member dialog with empty fields.
+  addMember() { S.d.invite = { name: '', email: '', phone: '', corp: '', alt: '', role: 'Agent', area: '' }; S.err = {}; S.modal = { t: 'invite' }; render(); },
+  // Open the edit-member dialog.
+  editMember(el) { const t = S.team.find((x) => x.name === el.dataset.n); if (!t) return; S.d.mem = { email: t.email || '', role: t.role, phone: phoneIn(t.phone), corp: phoneIn(t.corp), alt: phoneIn(t.alt), area: t.area || '' }; S.err = {}; S.modal = { t: 'member', n: t.name }; render(); },
+  doMember() {
+    const t = S.team.find((x) => x.name === S.modal.n); const d = S.d.mem; const e = {};
+    if (d.email && !/^\S+@\S+\.\S+$/.test(d.email.trim())) e['d.mem.email'] = 'Enter a valid email.';
+    if (d.role === 'Field staff' && !String(d.area || '').trim()) e['d.mem.area'] = 'Add the areas this person covers.';
+    if (Object.keys(e).length) { fail(e); return; }
+    if (t.role !== 'Owner') t.role = d.role;
+    Object.assign(t, { email: d.email.trim(), phone: phoneOut(t.phone, d.phone), corp: phoneOut(t.corp, d.corp), alt: d.alt ? phoneOut(t.alt, d.alt) : '', area: t.role === 'Field staff' ? d.area.trim() : '' });
+    S.modal = null; S.err = {}; toast('Saved ' + t.name); },
+  // Open the set / reset password dialog.
+  setPw(el) { const t = S.team.find((x) => x.name === el.dataset.n); if (!t) return; S.d.spw = { email: t.email || '', next: '', again: '' }; S.err = {}; S.modal = { t: 'setpw', n: t.name }; render(); },
+  async doSetPw() {
+    const t = S.team.find((x) => x.name === S.modal.n); const d = S.d.spw; const e = {};
+    if (!/^\S+@\S+\.\S+$/.test(String(d.email || '').trim())) e['d.spw.email'] = 'Enter the email they will sign in with.';
+    if (!d.next || d.next.length < 8) e['d.spw.next'] = 'Use at least 8 characters.';
+    if (d.again !== d.next) e['d.spw.again'] = 'The two passwords do not match.';
+    if (Object.keys(e).length) { fail(e); return; }
+    try {
+      await ADAPTER.api('/team/' + encodeURIComponent(t.name) + '/password', { method: 'POST', body: { password: d.next, email: d.email.trim() } });
+      t.email = d.email.trim().toLowerCase(); t.status = 'Active'; S.modal = null; S.err = {}; render(); toast('Password set — ' + t.name + ' can sign in now.');
+    } catch (x) { fail({ 'd.spw.next': x && x.message ? x.message : 'Could not set the password. Wait a moment and try again.' }); }
+  },
+  // Ask before removing a member.
+  removeMember(el) { S.modal = { t: 'rmmember', n: el.dataset.n }; render(); },
+  doRmMember() { const n = S.modal.n; const t = S.team.find((x) => x.name === n); if (!t || t.role === 'Owner' || n === ME().name) { S.modal = null; render(); return; } S.team = S.team.filter((x) => x.name !== n); S.modal = null; toast(n + ' removed'); },
+  // Settings: staff exports need approval.
+  exportApprovalTog() { S.org.exportApproval = !S.org.exportApproval; render(); },
+  // My account: change my own password.
+  async doChangePw() {
+    const p = S.d.pw; const e = {};
+    if (!p.cur) e['d.pw.cur'] = 'Enter your current password.';
+    if (!p.next || p.next.length < 8) e['d.pw.next'] = 'Use at least 8 characters.'; else if (p.next === p.cur) e['d.pw.next'] = 'Choose a password different from the current one.';
+    if (p.again !== p.next) e['d.pw.again'] = 'The two passwords do not match.';
+    if (Object.keys(e).length) { fail(e); return; }
+    try { await ADAPTER.api('/auth/password', { method: 'POST', body: { current: p.cur, next: p.next } }); S.d.pw = { cur: '', next: '', again: '' }; S.err = {}; render(); toast('Password updated.'); }
+    catch (x) { fail({ 'd.pw.cur': x && x.message ? x.message : 'Could not update the password.' }); }
+  },
+});
+// After adding a member, go straight to "set password" (the system does not e-mail invites).
+const _doInviteTeam = ACTS.doInvite;
+ACTS.doInvite = function (el, e) {
+  const before = S.team.length; _doInviteTeam.call(this, el, e);
+  if (S.team.length > before) { const t = S.team[S.team.length - 1]; S.d.spw = { email: t.email || '', next: '', again: '' }; S.err = {}; S.modal = { t: 'setpw', n: t.name, fresh: 1 }; render(); }
+};
+// Dialogs for the team screens + a notifications list built from real data.
+const _modalExtraTeam = modalExtra;
+modalExtra = function (m, wrap, cancel, D) {
+  switch (m.t) {
+    case 'member': {
+      const t = S.team.find((x) => x.name === m.n); if (!t) return null; const d = D.mem;
+      return wrap('Edit ' + esc(t.name), `<div class="row">${fld('Email', 'd.mem.email')}${t.role === 'Owner' ? fld('Role', 'd.mem.role', { opts: ['Owner'] }) : fld('Role', 'd.mem.role', { opts: ROLES, rer: 1 })}</div><div class="row">${fld('Mobile', 'd.mem.phone', { pre: '+91' })}${fld('Corporate number', 'd.mem.corp', { pre: '+91' })}</div>${fld('Alternative number', 'd.mem.alt', { pre: '+91', hint: 'Numbers you cannot see are shown masked — leave them as they are to keep them.' })}${d.role === 'Field staff' ? fld('Areas covered', 'd.mem.area', { req: 1, ph: 'e.g. Salt Lake, New Town' }) : ''}`, cancel + btn('Save', { a: 'data-act="doMember"' }));
+    }
+    case 'setpw': {
+      const t = S.team.find((x) => x.name === m.n); if (!t) return null;
+      return wrap((m.fresh ? 'Set a password for ' : 'Password for ') + esc(t.name), `<div class="sub">${m.fresh ? esc(t.name) + ' is added. ' : ''}They sign in with this email and password. Share the password privately; they can change it under My account.</div>${fld('Sign-in email', 'd.spw.email', { req: 1 })}${fld('New password', 'd.spw.next', { type: 'password', req: 1, hint: 'At least 8 characters' })}${fld('Confirm password', 'd.spw.again', { type: 'password' })}`, (m.fresh ? btn('Later', { k: 'sec', a: 'data-act="closeModal"' }) : cancel) + btn('Save password', { a: 'data-act="doSetPw"' }));
+    }
+    case 'rmmember':
+      return wrap('Remove ' + esc(m.n) + '?', `<div class="note" style="background:var(--err-soft);border-color:var(--err);color:var(--err)">${ico('info', 18)}<div>Their sign-in is deleted and cannot be undone. Records they created stay in the CRM.</div></div><div class="sub">To stop access but keep them on the team, use Deactivate instead.</div>`, cancel + btn('Remove', { k: 'danger', a: 'data-act="doRmMember"' }));
+    case 'notif': {
+      const td = iso(today); const tm = iso(addDays(today, 1)); const it = [];
+      S.leads.filter((l) => l.stage === 'Lead').slice(0, 3).forEach((l) => it.push(['New lead · ' + l.name, l.source || '', '#/leads/' + l.id]));
+      S.alerts.filter((a) => !a.seen).slice(0, 3).forEach((a) => it.push(['New property match', a.prop + ' fits ' + a.req, '#/matches']));
+      S.visits.filter((v) => (v.date === td || v.date === tm) && !['Cancelled', 'Completed'].includes(v.status)).slice(0, 4).forEach((v) => it.push(['Visit ' + (v.date === td ? 'today' : 'tomorrow'), v.id + ' · ' + fmt12(v.time), '#/visits/' + v.id]));
+      { const n = S.fus.filter((f) => !f.done && f.due === 'today').length; if (n) it.push(['Follow-ups due today', n + ' open', '#/followups']); }
+      if (canA('approveExports')) { const n = S.exportReq.filter((r) => r.status === 'Pending').length; if (n) it.push(['Export requests waiting', n + ' to review', '#/export']); }
+      if (canA('masters')) { const n = S.mreq.filter((r) => r.status === 'Pending').length; if (n) it.push(['Change requests waiting', n + ' for the masters lists', '#/masters']); }
+      return wrap('Notifications', `<div class="list" style="margin:-20px">${it.map((n) => `<a class="li" href="${n[2]}" data-act="closeModal"><div class="grow"><b>${esc(n[0])}</b><div class="sub">${esc(n[1])}</div></div></a>`).join('') || '<div class="li sub">You are all caught up.</div>'}</div>`, btn('Notification settings', { k: 'ghost', href: '#/settings', a: 'data-act="closeModal"' }) + btn('Close', { k: 'sec', a: 'data-act="closeModal"' }), 480);
+    }
+  }
+  return _modalExtraTeam(m, wrap, cancel, D);
 };
 
 if (location.hash && location.hash.startsWith('#/')) history.replaceState({}, '', location.hash.slice(1));

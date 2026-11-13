@@ -18,7 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: { sub: string }) {
     const u = await this.prisma.user.findUnique({ where: { id: payload.sub } });
     // Re-check the DB each time so a disabled/deleted user is locked out immediately.
-    if (!u || u.status === 'Disabled') throw new UnauthorizedException();
+    if (!u || ['Disabled', 'Inactive'].includes(u.status)) throw new UnauthorizedException();
     return { id: u.id, name: u.name, role: u.role, email: u.email, seeNumbers: u.seeNumbers };
   }
 }

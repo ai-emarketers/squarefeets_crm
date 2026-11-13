@@ -16,7 +16,7 @@
 
   // 1. every list screen, detail page and form
   const first = (a) => a && a[0] && a[0].id;
-  const routes = ['/dashboard', '/projects', '/properties', '/leads', '/prospects', '/requirements', '/matches', '/visits', '/followups', '/deals', '/brokerage', '/capture', '/settings', '/import', '/export', '/masters',
+  const routes = ['/dashboard', '/projects', '/properties', '/leads', '/prospects', '/requirements', '/matches', '/visits', '/followups', '/deals', '/brokerage', '/capture', '/team', '/account', '/settings', '/import', '/export', '/masters',
     '/projects/new', '/properties/new', '/requirements/new',
     first(B.projects) && '/projects/' + first(B.projects), first(B.projects) && '/projects/' + first(B.projects) + '/edit',
     first(B.props) && '/properties/' + first(B.props), first(B.props) && '/properties/' + first(B.props) + '/edit',

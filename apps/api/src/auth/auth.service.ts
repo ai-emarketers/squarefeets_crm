@@ -12,7 +12,7 @@ export class AuthService {
   // Check email + password, then issue a JWT. The same generic error is used for every failure (no user enumeration).
   async login(email: string, password: string) {
     const u = await this.prisma.user.findUnique({ where: { email: String(email || '').toLowerCase().trim() } });
-    if (!u || !u.passwordHash || u.status === 'Disabled' || !(await bcrypt.compare(password || '', u.passwordHash))) {
+    if (!u || !u.passwordHash || ['Disabled', 'Inactive'].includes(u.status) || !(await bcrypt.compare(password || '', u.passwordHash))) {
       throw new UnauthorizedException('Invalid email or password.');
     }
     return { token: await this.jwt.signAsync({ sub: u.id }), user: await this.profile(u.id) };

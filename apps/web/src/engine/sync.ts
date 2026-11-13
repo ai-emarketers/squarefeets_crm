@@ -120,6 +120,8 @@ export function createAdapter(onLogout: () => void) {
   return {
     // engine -> adapter: receive the toast/render callbacks
     attach(h: Hooks) { hooks = h; },
+    // direct API call for actions that are not part of the /sync diff (set / change password)
+    api: (path: string, opts?: any) => api(path, opts),
     /** Called by the engine after BOOT is applied; the baseline is taken on the first save (after normalisation). */
     loaded(_S: any) {},
     // engine calls this after every change. First call = take the baseline, later calls = flush the diff.
