@@ -39,8 +39,13 @@ export function sendSmtp(m: SmtpMail): Promise<void> {
     let buf = ''; let done = false; let waiter: ((code: number, text: string) => void) | null = null;
     const sock = tls.connect({ host: m.host, port: m.port, servername: m.host, ...(m.tlsOptions || {}) });
     sock.setEncoding('utf8'); sock.setTimeout(20000);
-    const fail = (e: Error) => { if (done) return; done = true; try { sock.destroy(); } catch { /* ignore */ } reject(e); };
-    sock.on('error', fail); sock.on('timeout', () => fail(new Error('The mail server took too long to answer.')));
+    // Fail once. Node reports a blocked or unreachable host as an AggregateError with an empty message, so name the error code.
+    const fail = (e: any) => {
+      if (done) return; done = true; try { sock.destroy(); } catch { /* ignore */ }
+      const code = e?.code || e?.errors?.[0]?.code || ''; if (!e?.message && code) e = new Error('Cannot connect (' + code + ')');
+      reject(e);
+    };
+    sock.on('error', fail); sock.on('timeout', () => fail(new Error('Cannot connect (ETIMEDOUT): the mail server took too long to answer.')));
     sock.on('close', () => fail(new Error('The mail server closed the connection.')));
     // Collect server lines; a reply ends at the line whose 4th character is a space ("250 OK"), earlier lines have "250-".
     sock.on('data', (d: string) => {

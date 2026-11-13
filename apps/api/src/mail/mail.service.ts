@@ -1,7 +1,8 @@
 // MailService — sends the matched-properties email. Two ways, picked from the Railway variables:
-//   1) SMTP (e.g. Gmail): SMTP_USER + SMTP_PASS (an app password), optional SMTP_HOST (default smtp.gmail.com) and SMTP_PORT (default 465, TLS).
-//   2) Brevo HTTP API (free plan: 300 emails a day): BREVO_API_KEY + MAIL_FROM_EMAIL (a sender verified in Brevo).
-// SMTP wins when both are set. Optional for both: MAIL_FROM_EMAIL, MAIL_FROM_NAME, MAIL_ORG_ADDRESS (footer line).
+//   1) Brevo HTTP API (free plan: 300 emails a day): BREVO_API_KEY + MAIL_FROM_EMAIL (a sender verified in Brevo). Uses HTTPS, so it
+//      works on every Railway plan. Preferred, and it wins when both are set.
+//   2) SMTP (e.g. Gmail): SMTP_USER + SMTP_PASS (an app password), optional SMTP_HOST (default smtp.gmail.com) and SMTP_PORT (default 465, TLS).
+//      Railway's Free, Trial and Hobby plans block SMTP ports, so this only works on a Pro plan or on another host. Optional for both: MAIL_FROM_EMAIL, MAIL_FROM_NAME, MAIL_ORG_ADDRESS (footer line).
 // With neither configured the endpoint answers 503.
 import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,7 +24,10 @@ export class MailService {
   constructor(private prisma: PrismaService, private audit: AuditService) {}
 
   /** True when an API key is configured (the web app uses this to show or hide the Email option). */
-  configured() { return this.smtpOn() || this.brevoOn(); }
+  configured() { return this.resendOn() || this.smtpOn() || this.brevoOn(); }
+
+  /** Resend API (free: 100 emails a day). RESEND_API_KEY only; the sender defaults to onboarding@resend.dev, which Resend delivers to the account owner's own email. */
+  private resendOn() { return !!process.env.RESEND_API_KEY; }
   /** SMTP is set up (user + password given). */
   private smtpOn() { return !!process.env.SMTP_USER && !!process.env.SMTP_PASS; }
   /** Brevo API is set up (key + a verified sender). */
@@ -49,7 +53,7 @@ export class MailService {
     });
     const org = await this.prisma.organization.findFirst();
     const orgName = (org as any)?.name || process.env.MAIL_FROM_NAME || 'SquareFeets Realty';
-    const fromEmail = process.env.MAIL_FROM_EMAIL || process.env.SMTP_USER!;
+    const fromEmail = process.env.MAIL_FROM_EMAIL || process.env.SMTP_USER || 'onboarding@resend.dev';
     const brokerEmail = u.email || fromEmail;
     const data = {
       clientName: pros.name, orgName, brokerName: u.name, brokerEmail, orgAddress: process.env.MAIL_ORG_ADDRESS || '',
@@ -58,14 +62,27 @@ export class MailService {
     };
     const subject = (b.subject || '').trim() || `${properties.length} ${properties.length === 1 ? 'home' : 'homes'} that match what you asked for`;
     const html = matchesHtml(data); const text = matchesText(data); const fromName = u.name + ' · ' + orgName;
-    if (this.smtpOn()) {
+    if (this.resendOn()) {
+      const res = await (globalThis as any).fetch('https://api.resend.com/emails', {
+        method: 'POST', headers: { authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ from: `${fromName.replace(/[<>"]/g, '')} <${fromEmail}>`, to: [to], reply_to: brokerEmail, subject, html, text }),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => ''); console.error('[mail] Resend refused', res.status, t.slice(0, 300));
+        throw new BadRequestException(res.status === 401 || res.status === 403 && /api key/i.test(t) ? 'The email service rejected the API key.'
+          : res.status === 403 ? 'Resend only delivers to the email you signed up with until a domain is verified.' : 'The email service could not send this message.');
+      }
+    } else if (!this.brevoOn() && this.smtpOn()) {
       // SMTP (Gmail …): the From address must be the logged-in mailbox (or an alias Gmail allows).
       try {
         await sendSmtp({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT) || 465, user: process.env.SMTP_USER!, pass: process.env.SMTP_PASS!,
           from: fromEmail, fromName, to, toName: pros.name, replyTo: brokerEmail, replyToName: u.name, subject, html, text });
       } catch (e: any) {
         console.error('[mail] SMTP failed:', e?.message);
-        throw new BadRequestException(/535|534|auth/i.test(String(e?.message)) ? 'The mail server rejected the login. Check the app password.' : 'The mail server could not send this message: ' + String(e?.message || '').slice(0, 120));
+        const msg = String(e?.message || '');
+        throw new BadRequestException(/535|534|auth/i.test(msg) ? 'The mail server rejected the login. Check the app password.'
+          : /Cannot connect|ETIMEDOUT|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|closed the connection/i.test(msg) ? 'Cannot reach the mail server. Railway’s Trial and Hobby plans block SMTP, so use a Brevo API key instead (BREVO_API_KEY + MAIL_FROM_EMAIL).'
+          : 'The mail server could not send this message: ' + msg.slice(0, 120));
       }
     } else {
       const res = await (globalThis as any).fetch('https://api.brevo.com/v3/smtp/email', {
