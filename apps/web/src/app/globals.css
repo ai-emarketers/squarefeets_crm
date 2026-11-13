@@ -387,3 +387,40 @@ textarea{border:1px solid var(--field);border-radius:var(--rs);padding:12px;back
  .kcol{flex:1 0 200px}
 }
 @media (prefers-reduced-motion:reduce){.side{transition:none}}
+
+/* ---------- login page (route /login) ----------
+   Two panels side by side on wide screens; they stack (brand on top, form below) on narrow ones. */
+.lg{min-height:100vh;min-height:100dvh;display:flex;flex-wrap:wrap;background:var(--bg)}
+/* brand panel */
+.lg-brand{flex:1 1 480px;min-width:0;box-sizing:border-box;background:#0F1B3D;color:#fff;padding:48px clamp(24px,5vw,56px) 230px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.lg-brand .lg-mark{display:flex;align-items:center;gap:12px}
+.lg-logo{width:44px;height:44px;border-radius:12px;background:#2B4FDB;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:17px;letter-spacing:.02em;color:#fff}
+.lg-name{display:flex;flex-direction:column;line-height:1.2}
+.lg-name b{font-weight:600;font-size:17px}
+.lg-name span{font-size:13px;color:#B9C3E3}
+.lg-pitch{margin-top:clamp(40px,9vh,88px);display:flex;flex-direction:column;gap:20px}
+.lg-pitch h1{margin:0;font-size:clamp(28px,3.4vw,40px);line-height:1.15;font-weight:600;letter-spacing:-.02em;max-width:460px;color:#fff}
+.lg-pitch p{margin:0;font-size:16px;line-height:1.55;color:#C9D2EC;max-width:430px}
+.lg-points{list-style:none;margin:40px 0 0;padding:0;display:flex;flex-direction:column;gap:18px}
+.lg-points li{display:flex;align-items:center;gap:14px;font-size:15px;color:#E6EBF8}
+.lg-points .ic{width:36px;height:36px;border-radius:10px;background:#1B2B58;display:flex;align-items:center;justify-content:center;flex:none}
+.lg-sky{position:absolute;left:0;bottom:0;width:100%;max-width:600px;height:200px}
+/* form panel */
+.lg-form-wrap{flex:1 1 440px;min-width:0;min-height:560px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;padding:48px clamp(20px,4vw,48px) 24px}
+.lg-form{width:min(400px,100%);display:flex;flex-direction:column;gap:20px}
+.lg-form h2{margin:0;font-size:28px;font-weight:600;letter-spacing:-.015em}
+.lg-form .lg-lead{margin:6px 0 0;font-size:15px;color:var(--muted)}
+.lg-field{display:flex;flex-direction:column;gap:8px}
+.lg-field label{font-size:14px;font-weight:500}
+.lg-input{height:48px;box-sizing:border-box;border:1px solid var(--field);border-radius:10px;background:var(--surface);display:flex;align-items:center;gap:10px;padding:0 6px 0 14px}
+.lg-input:focus-within{border-color:var(--p);box-shadow:0 0 0 3px var(--p-soft)}
+.lg-input svg{flex:none;color:var(--muted)}
+.lg-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:16px;color:var(--ink)}
+.lg-input input::placeholder{color:var(--muted)}
+.lg-show{min-width:56px;height:40px;border:0;background:transparent;color:var(--p);font-size:14px;font-weight:500;border-radius:8px}
+.lg-submit{height:50px;border:0;border-radius:10px;background:#2B4FDB;color:#fff;font-size:16px;font-weight:600}
+.lg-submit:hover:not(:disabled){background:#2342BD}
+.lg-submit:disabled{opacity:.7;cursor:default}
+.lg-err{background:var(--err-soft);color:var(--err);border:1px solid var(--err);border-radius:10px;padding:10px 14px;font-size:14px}
+.lg-help{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted);text-align:center}
+.lg-foot{margin:0;font-size:12.5px;color:var(--muted);text-align:center}
