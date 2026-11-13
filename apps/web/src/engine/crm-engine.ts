@@ -3581,7 +3581,7 @@ function sendModal(m: Rec, wrap: (...a: any[]) => string, cancel: string) {
   }
   const hidden = !canA('seeNumbers') || t.num.includes('•');
   // Email needs: the server set up, a saved email address on a prospect, and permission to see contact details.
-  const mailWhy = S.mailOk === false ? 'Email is not set up yet (the admin adds the Brevo settings).' : t.isLead ? 'Convert this lead to a prospect with an email address to email them.' : !t.email ? t.name + ' has no email address saved.' : !canA('seeNumbers') ? 'Your role cannot see contact details.' : '';
+  const mailWhy = S.mailOk === false ? 'Email is not set up yet (the admin adds the email settings in Railway).' : t.isLead ? 'Convert this lead to a prospect with an email address to email them.' : !t.email ? t.name + ' has no email address saved.' : !canA('seeNumbers') ? 'Your role cannot see contact details.' : '';
   const canMail = S.mailOk !== false && !mailWhy; const em = D.ch === 'email' && canMail;
   const subjDefault = picked.length + (picked.length === 1 ? ' home' : ' homes') + ' that match what you asked for';
   const introDefault = 'Based on what you told us (' + [reqSpec(r), r.locs.join(', '), sendBudget(r)].filter(Boolean).join(', ') + '), these are the best matches right now.';
