@@ -1081,7 +1081,7 @@ function matchesView() {
   const r = list.find((x) => x.id === S.tab.matchReq); const sel = S.tab.matchSel || []; const ms = r ? matchesFor(r) : [];
   // Budget range text for a requirement (sale shows lakhs/crores, rent shows monthly).
   const rangeTxt = (x) => (x.purpose === 'sale' ? fmtL(x.min) + '–' + fmtL(x.max) : fmtRent(x.min) + '–' + fmtRent(x.max));
-  return page('Matches', r ? ms.length + ' properties · best ' + (ms[0] ? ms[0].score : 0) + '%' : 'No requirement', btn('Share selected', { k: 'ghost', a: 'data-act="shareSel"' }) + btn('Schedule visit', { a: 'data-act="visitSel"' }),
+  return page('Matches', r ? ms.length + ' properties · best ' + (ms[0] ? ms[0].score : 0) + '%' : 'No requirement', btn('Send to client', { k: 'ghost', i: 'chat', a: 'data-act="shareSel"' }) + btn('Schedule visit', { a: 'data-act="visitSel"' }),
     `<div class="note">${ico('info', 18)}<div>Matching runs on <b>properties</b> against every pending requirement — prospects and leads, qualified or not.</div></div><div class="head">${purposeSeg('matches')}<div class="inp sel" style="min-width:300px"><select id="mreq" data-f="tab.matchReq" data-render="1" aria-label="Requirement">${list.map((x) => `<option value="${x.id}" ${x.id === S.tab.matchReq ? 'selected' : ''}>${esc(reqWho(x))} (${reqTag(x).toLowerCase()}) · ${PURPOSE[x.purpose]}${x.bhk ? ' · ' + x.bhk + ' BHK' : ''}</option>`).join('')}</select></div></div>
     ${r ? card(`<div class="sub">${esc(reqWho(r))} · ${esc(r.locs.join(', ') || 'Any area')} · ${rangeTxt(r)} · ${esc(r.area)}</div>` + (ms.length ? `<div class="list" style="margin:0 -20px -20px">${ms.map((m) => `<div style="border-bottom:1px solid var(--line)"><div class="li" style="border:none">${chk(sel.includes(m.p.id), '', `data-act="matchSel" data-id="${m.p.id}" aria-label="Select ${m.p.id}"`)}<a class="grow" href="#/properties/${m.p.id}"><b>${propLabel(m.p)}</b><div class="sub">${esc(m.p.loc)} · ${m.p.area} sq ft · ${fmtPrice(m.p)}</div></a>${badge(m.score + '%', m.score >= 80 ? 'ok' : m.score >= 60 ? 'blue' : 'warn')}<button type="button" class="btn ghost sm" data-act="why" data-id="${m.p.id}">Why this?</button></div>${S.tab.why === m.p.id ? `<div style="padding:0 16px 14px 56px;display:flex;gap:8px;flex-wrap:wrap">${m.why.map((w) => `<span class="badge ${w[2] ? 'ok' : 'err'}">${w[2] ? '✓' : '✗'} ${w[0]} ${w[2] ? '+' + w[1] : ''}</span>`).join('')}</div>` : ''}</div>`).join('')}</div>` : '<div class="sub" style="padding:16px 0">No properties match this requirement yet.</div>')) : card('<div class="sub">Add a requirement or a lead with a basic requirement to see matches.</div>')}`);
 }
@@ -3535,6 +3535,118 @@ modalExtra = function (m, wrap, cancel, D) {
   }
   return _modalExtraTeam(m, wrap, cancel, D);
 };
+
+/* ------------------------------------------------------------ send matches to a client (WhatsApp) */
+// Phone is a mobile browser? Then wa.me opens the WhatsApp app directly and the 'send via' choice is hidden.
+const IS_MOBILE_UA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+// Who a requirement belongs to, with the number to message (WhatsApp number if different from the phone).
+function sendTarget(r: Rec) {
+  const p: Rec | undefined = r.lead ? S.leads.find((l) => l.id === r.lead) : prosById(r.cid); if (!p) return null;
+  const num = p.waSame === false && p.wa ? p.wa : p.phone;
+  return { p, name: p.name as string, num: String(num || ''), notWa: p.waOk === false, isLead: !!r.lead, email: String(p.email || '') };
+}
+// Digits for a wa.me / whatsapp:// link: country code + number. Empty when the number is hidden or too short.
+function waDigits(num: string) { if (num.includes('•')) return ''; const d = num.replace(/\D/g, ''); return d.length === 10 ? '91' + d : d.length >= 11 ? d : ''; }
+// Budget range of a requirement as text (lakhs/crores for sale, monthly for rent).
+const sendBudget = (r: Rec) => (r.purpose === 'sale' ? fmtL(r.min) + '–' + fmtL(r.max) : fmtRent(r.min) + '–' + fmtRent(r.max));
+// Properties picked in the Send modal (all ticked unless unticked).
+const sendPicked = (m: Rec) => String(m.ids || '').split(',').filter(Boolean).filter((id) => S.d.send.sel[id] !== false);
+// Shareable documents of the picked properties that are ticked.
+const sendDocs = (m: Rec) => sendPicked(m).flatMap((pid) => filesOf('prop:' + pid).filter((f: Rec) => f.share && S.d.shareSel[f.id] !== false));
+// The WhatsApp message text, built from the requirement and the picked properties (WhatsApp *bold* markers).
+function buildWaMessage(m: Rec, r: Rec) {
+  const t = sendTarget(r); const ids = sendPicked(m); const docs = sendDocs(m).length;
+  const spec = [reqSpec(r), r.locs.join(', '), sendBudget(r)].filter(Boolean).join(', ');
+  const lines = ids.map((id, i) => {
+    const p: Rec = propById(id); const size = p.sbu || p.area; const facts = [p.cat === 'Residential' && p.bhk ? p.bhk + ' BHK' : '', size ? size + ' sq ft' : '', fmtPrice(p)].filter(Boolean).join(' · ');
+    return (i + 1) + '. *' + p.title + '* – ' + p.loc + '\n    ' + facts;
+  });
+  return 'Hi ' + (t ? t.name.split(' ')[0] : '') + ', this is ' + S.me + ' from ' + S.org.name + '.\n\n' +
+    (ids.length === 1 ? 'Here is 1 property that matches' : 'Here are ' + ids.length + ' properties that match') + ' what you asked for (' + spec + '):\n\n' + lines.join('\n\n') + '\n\n' +
+    (docs ? 'I will send ' + (docs === 1 ? 'the document' : 'the ' + docs + ' documents') + ' for these here next.\n\n' : '') +
+    'Would you like to see any of them? Reply here and I will set up a visit.';
+}
+// The 'Send to client' dialog: pick properties, check the message, send by WhatsApp, then confirm it was sent.
+function sendModal(m: Rec, wrap: (...a: any[]) => string, cancel: string) {
+  const r = pendingReqs().find((x) => x.id === m.req); const t = r && sendTarget(r);
+  if (!r || !t) return wrap('Send to client', '<div class="sub">This requirement is no longer available.</div>', cancel);
+  const D = S.d.send; const ids = String(m.ids || '').split(',').filter(Boolean); const picked = sendPicked(m);
+  // Keep the text in step with the ticked properties until the broker edits it by hand.
+  const auto = picked.length ? buildWaMessage(m, r) : ''; if (!D.msg || D.msg === D.lastAuto) D.msg = auto; D.lastAuto = auto;
+  const edited = D.msg !== auto;
+  if (m.step === 'confirm') {
+    return wrap('Did you send it?', `<div class="note ok">${ico('chat', 18)}<div>WhatsApp should have opened for <b>${esc(t.name)}</b> with the message ready. Press <b>Send</b> there, then come back and confirm.</div></div>
+      <div class="sub" style="font-size:12px">A link can only pre-fill text, so add any documents in the chat yourself. We log this in ${esc(t.name)}’s timeline only after you confirm.</div>`,
+    btn('Not yet', { k: 'sec', a: 'data-act="sendBack"' }) + btn('Copy message', { k: 'ghost', a: 'data-act="sendCopy"' }) + btn('Open again', { k: 'ghost', i: 'chat', a: 'data-act="sendOpen"' }) + btn('Yes, I sent it', { i: 'check', a: 'data-act="sendDone"' }), 560);
+  }
+  const hidden = !canA('seeNumbers') || t.num.includes('•');
+  const props = ids.map((id) => { const p: Rec = propById(id); const ms = matchesFor(r).find((x) => x.p.id === id); if (!p) return ''; return chk(D.sel[id] !== false, `<b>${esc(p.title)}</b> <span class="sub">· ${esc(p.loc)} · ${fmtPrice(p)}</span>${ms ? ' ' + badge(ms.score + '%', 'ok') : ''}`, `data-act="sendPropTog" data-id="${id}"`); }).join('');
+  const docs = ids.flatMap((pid) => filesOf('prop:' + pid).filter((f: Rec) => f.share).map((f: Rec) => ({ pid, f })));
+  return wrap('Send to client', `
+    <div class="head"><div class="av">${initials(t.name)}</div><div class="grow"><b>${esc(t.name)}</b> ${badge(t.isLead ? 'Lead' : 'Prospect')}<div class="sub">${esc(maskNum(t.num))}${t.email ? ' · ' + esc(t.email) : ''}</div></div></div>
+    <div class="chips" style="margin:6px 0 2px">${[reqSpec(r), r.locs.join(', '), sendBudget(r)].filter(Boolean).map((x) => badge(x)).join('')}</div>
+    ${t.notWa ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>${esc(t.name)}’s number is flagged as <b>not on WhatsApp</b>. Update the number or send by email.</div></div>` : ''}
+    ${hidden ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>The number is hidden for your role. Reveal it from the client’s page or ask an admin before sending.</div></div>` : ''}
+    <div class="fld"><span class="l">Properties to send (${picked.length} of ${ids.length})</span><div class="card" style="background:var(--bg);gap:2px">${props}</div></div>
+    <div class="fld"><span class="l">Send by</span><div class="chips">${chip('WhatsApp', true, 'data-act="noop"')}${chip('Email · coming next', false, 'data-act="toast" data-t="Email sending is added after the email template is approved"')}</div></div>
+    ${fld('Message', 'd.send.msg', { rows: 11, hint: edited ? 'You edited the text. <a href="#" data-act="sendReset" style="color:var(--p);font-weight:600">Reset to the automatic text</a>' : 'Built from the client’s requirement. You can edit it.' })}
+    ${docs.length ? `<div class="card" style="background:var(--bg);gap:2px"><b>Documents to send afterwards</b><div class="sub" style="font-size:12px;margin-bottom:4px">WhatsApp links can’t attach files, so add these in the chat after it opens. Only files marked Shareable are listed.</div>${docs.map((x) => chk(S.d.shareSel[x.f.id] !== false, esc(x.f.name) + ' <span class="sub">· ' + x.pid + '</span>', `data-act="shareDocTog" data-id="${x.f.id}"`)).join('')}</div>` : ''}
+    ${IS_MOBILE_UA ? '' : `<div class="fld"><span class="l">Open with</span>${chipSet('d.send.via', [['app', 'WhatsApp app'], ['web', 'WhatsApp Web'], ['copy', 'Copy message only']], D.via)}<small>The app opens if WhatsApp Desktop is installed; WhatsApp Web asks for a QR scan the first time.</small></div>`}`,
+  cancel + btn(D.via === 'copy' && !IS_MOBILE_UA ? 'Copy message' : 'Send on WhatsApp', { i: 'chat', a: 'data-act="sendGo"' + (!picked.length || t.notWa ? ' disabled' : '') }), 640);
+}
+// Chain the new dialog in front of the existing ones.
+const _modalExtraSend = modalExtra;
+modalExtra = function (m: Rec, wrap: (...a: any[]) => string, cancel: string, D: Rec) { return m.t === 'send' ? sendModal(m, wrap, cancel) : _modalExtraSend(m, wrap, cancel, D); };
+// Link to open for the chosen route (phone browsers use wa.me; desktop picks app, Web or copy).
+function waLink(to: string, text: string) {
+  const q = encodeURIComponent(text);
+  if (IS_MOBILE_UA) return 'https://wa.me/' + to + '?text=' + q;
+  return S.d.send.via === 'web' ? 'https://web.whatsapp.com/send?phone=' + to + '&text=' + q : 'whatsapp://send?phone=' + to + '&text=' + q;
+}
+// Copy text to the clipboard (silently ignores browsers that refuse).
+function copyText(txt: string) { try { navigator.clipboard.writeText(txt).catch(() => { }); } catch (e) { } }
+Object.assign(ACTS, {
+  // 'Send to client' on the Matches screen: needs ticked properties.
+  shareSel() {
+    const a: string[] = S.tab.matchSel || []; if (!a.length) { toast('Tick one or more properties first.'); return; }
+    const r = pendingReqs().find((x) => x.id === S.tab.matchReq); if (!r) { toast('Choose a requirement first.'); return; }
+    S.d.send = { sel: {}, via: 'app', msg: '', lastAuto: '' }; S.modal = { t: 'send', ids: a.join(','), req: r.id, step: 'compose' }; render();
+  },
+  // Tick / untick one property in the Send dialog.
+  sendPropTog(el: Rec) { const id = el.dataset.id; S.d.send.sel[id] = S.d.send.sel[id] === false; render(); },
+  // Throw away hand edits and rebuild the text.
+  sendReset(el: Rec, ev: Rec) { if (ev && ev.preventDefault) ev.preventDefault(); S.d.send.msg = ''; render(); },
+  // Open WhatsApp (or copy) with the message, then ask the broker to confirm.
+  sendGo() {
+    const m = S.modal; const r = pendingReqs().find((x) => x.id === m.req); const t = r && sendTarget(r); if (!r || !t) return;
+    if (!canA('seeNumbers')) { toast('Your role cannot see numbers, so it cannot send either.'); return; }
+    const to = waDigits(t.num); if (!to) { toast('This number is hidden or incomplete. Reveal or fix it first.'); return; }
+    if (t.notWa) { toast('This number is not on WhatsApp.'); return; }
+    if (!sendPicked(m).length) { toast('Tick at least one property.'); return; }
+    ACTS.sendOpen();
+    S.modal = Object.assign({}, m, { step: 'confirm' }); render();
+  },
+  // Do the opening itself (also used by 'Open again').
+  sendOpen() {
+    const m = S.modal; const r = pendingReqs().find((x) => x.id === m.req); const t = r && sendTarget(r); if (!r || !t) return;
+    const to = waDigits(t.num); const txt = S.d.send.msg;
+    if (!IS_MOBILE_UA && S.d.send.via === 'copy') { copyText(txt); toast('Message copied. Paste it into the chat.'); return; }
+    copyText(txt);
+    const url = waLink(to, txt); if (url.startsWith('whatsapp:')) window.location.href = url; else window.open(url, '_blank', 'noopener');
+  },
+  // Back from the confirm step to the message.
+  sendBack() { S.modal = Object.assign({}, S.modal, { step: 'compose' }); render(); },
+  // Copy the text again.
+  sendCopy() { copyText(S.d.send.msg); toast('Message copied'); },
+  // The broker confirmed they pressed Send: log it on the client's timeline.
+  sendDone() {
+    const m = S.modal; const r = pendingReqs().find((x) => x.id === m.req); const t = r && sendTarget(r); if (!r || !t) return;
+    const ids = sendPicked(m); const note = 'Sent ' + ids.length + ' matched propert' + (ids.length === 1 ? 'y' : 'ies') + ' (' + ids.join(', ') + ') for ' + r.id;
+    if (t.isLead) t.p.act.unshift(['WhatsApp', note, dateTxt(iso(today))]);
+    else S.fus.unshift({ id: 'f' + Date.now(), who: t.name, kind: 'WhatsApp', note, due: '', when: dateTxt(iso(today)), done: true, p: r.purpose });
+    S.tab.matchSel = []; S.modal = null; toast('Logged: ' + note); render();
+  },
+});
 
 if (location.hash && location.hash.startsWith('#/')) history.replaceState({}, '', location.hash.slice(1));
 else if (location.pathname === '/' || location.pathname === '') history.replaceState({}, '', '/dashboard');
