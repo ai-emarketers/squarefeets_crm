@@ -1,0 +1,2878 @@
+{
+ "perms": {
+  "mods": [
+   [
+    "properties",
+    "Properties (inventory)"
+   ],
+   [
+    "projects",
+    "Projects"
+   ],
+   [
+    "leads",
+    "Leads"
+   ],
+   [
+    "prospects",
+    "Prospects"
+   ],
+   [
+    "requirements",
+    "Requirements & matches"
+   ],
+   [
+    "visits",
+    "Visits & follow-ups"
+   ],
+   [
+    "deals",
+    "Deals"
+   ],
+   [
+    "brokerage",
+    "Brokerage"
+   ],
+   [
+    "team",
+    "Team & settings"
+   ]
+  ],
+  "lv": {
+   "properties": [
+    "write",
+    "write",
+    "write",
+    "write"
+   ],
+   "projects": [
+    "write",
+    "write",
+    "read",
+    "read"
+   ],
+   "leads": [
+    "write",
+    "write",
+    "write",
+    "none"
+   ],
+   "prospects": [
+    "write",
+    "write",
+    "write",
+    "none"
+   ],
+   "requirements": [
+    "write",
+    "write",
+    "write",
+    "none"
+   ],
+   "visits": [
+    "write",
+    "write",
+    "write",
+    "write"
+   ],
+   "deals": [
+    "write",
+    "write",
+    "write",
+    "none"
+   ],
+   "brokerage": [
+    "write",
+    "write",
+    "read",
+    "none"
+   ],
+   "team": [
+    "write",
+    "read",
+    "none",
+    "none"
+   ]
+  },
+  "act": [
+   [
+    "exportProperties",
+    "Export properties",
+    [
+     1,
+     1,
+     0,
+     0
+    ]
+   ],
+   [
+    "exportLeads",
+    "Export leads",
+    [
+     1,
+     1,
+     0,
+     0
+    ]
+   ],
+   [
+    "exportProspects",
+    "Export prospects",
+    [
+     1,
+     1,
+     0,
+     0
+    ]
+   ],
+   [
+    "approveExports",
+    "Approve export requests",
+    [
+     1,
+     1,
+     0,
+     0
+    ]
+   ],
+   [
+    "import",
+    "Import data from CSV",
+    [
+     1,
+     1,
+     0,
+     0
+    ]
+   ],
+   [
+    "seeNumbers",
+    "See full phone numbers & emails",
+    [
+     1,
+     1,
+     1,
+     0
+    ]
+   ],
+   [
+    "masters",
+    "Edit masters (types, amenities, groups)",
+    [
+     1,
+     0,
+     0,
+     0
+    ]
+   ]
+  ]
+ },
+ "masters": {
+  "projectTypes": [
+   "Residential Complex",
+   "Township",
+   "Single Tower",
+   "Commercial Complex",
+   "Industrial Park",
+   "Warehouse",
+   "Mixed Development",
+   "Independent house",
+   "Other"
+  ],
+  "features": [
+   "Modular kitchen",
+   "Wardrobes",
+   "Air conditioning",
+   "Geyser",
+   "Chimney",
+   "Gas pipeline",
+   "Vastu compliant",
+   "Corner unit",
+   "Park facing",
+   "Wi-Fi ready",
+   "Water purifier",
+   "Inverter / UPS"
+  ],
+  "brokerGroups": [
+   "BNI",
+   "RERA-registered agents",
+   "WhatsApp · Salt Lake brokers",
+   "WhatsApp · New Town brokers"
+  ],
+  "sizeUnits": [
+   "acres",
+   "bigha",
+   "katha",
+   "sq ft",
+   "sq m",
+   "hectares"
+  ]
+ },
+ "mreq": [],
+ "alerts": [],
+ "viewLog": [
+  {
+   "who": "Anil Sharma",
+   "what": "Owner number",
+   "rec": "RS003",
+   "at": "2026-09-26T10:42:00"
+  },
+  {
+   "who": "Anil Sharma",
+   "what": "Prospect number",
+   "rec": "Rohit Banerjee",
+   "at": "2026-09-27T16:05:00"
+  }
+ ],
+ "exportReq": [],
+ "exportLog": [
+  {
+   "who": "Anil Sharma",
+   "what": "Properties",
+   "n": 9,
+   "at": "2026-09-26T11:20:00"
+  }
+ ],
+ "amen": [
+  {
+   "id": "lift",
+   "label": "Lift",
+   "cat": "Society"
+  },
+  {
+   "id": "power_backup",
+   "label": "Power backup",
+   "cat": "Society"
+  },
+  {
+   "id": "gated",
+   "label": "Gated community",
+   "cat": "Society"
+  },
+  {
+   "id": "clubhouse",
+   "label": "Clubhouse",
+   "cat": "Society"
+  },
+  {
+   "id": "community_hall",
+   "label": "Community hall",
+   "cat": "Society"
+  },
+  {
+   "id": "intercom",
+   "label": "Intercom",
+   "cat": "Society"
+  },
+  {
+   "id": "parking_visitor",
+   "label": "Visitor parking",
+   "cat": "Society"
+  },
+  {
+   "id": "ev_charging",
+   "label": "EV charging",
+   "cat": "Society"
+  },
+  {
+   "id": "security",
+   "label": "24×7 security",
+   "cat": "Safety"
+  },
+  {
+   "id": "cctv",
+   "label": "CCTV",
+   "cat": "Safety"
+  },
+  {
+   "id": "fire_safety",
+   "label": "Fire safety",
+   "cat": "Safety"
+  },
+  {
+   "id": "video_door",
+   "label": "Video door phone",
+   "cat": "Safety"
+  },
+  {
+   "id": "rainwater",
+   "label": "Rainwater harvesting",
+   "cat": "Utility"
+  },
+  {
+   "id": "stp",
+   "label": "Sewage treatment plant",
+   "cat": "Utility"
+  },
+  {
+   "id": "water_24x7",
+   "label": "24×7 water",
+   "cat": "Utility"
+  },
+  {
+   "id": "piped_gas",
+   "label": "Piped gas",
+   "cat": "Utility"
+  },
+  {
+   "id": "solar",
+   "label": "Solar power",
+   "cat": "Utility"
+  },
+  {
+   "id": "gym",
+   "label": "Gym",
+   "cat": "Recreation"
+  },
+  {
+   "id": "swimming_pool",
+   "label": "Swimming pool",
+   "cat": "Recreation"
+  },
+  {
+   "id": "play_area",
+   "label": "Kids' play area",
+   "cat": "Recreation"
+  },
+  {
+   "id": "garden",
+   "label": "Garden",
+   "cat": "Recreation"
+  },
+  {
+   "id": "jogging_track",
+   "label": "Jogging track",
+   "cat": "Recreation"
+  },
+  {
+   "id": "indoor_games",
+   "label": "Indoor games room",
+   "cat": "Recreation"
+  },
+  {
+   "id": "badminton",
+   "label": "Badminton court",
+   "cat": "Recreation"
+  },
+  {
+   "id": "tennis",
+   "label": "Tennis court",
+   "cat": "Recreation"
+  },
+  {
+   "id": "yoga",
+   "label": "Yoga / meditation area",
+   "cat": "Recreation"
+  },
+  {
+   "id": "shopping",
+   "label": "Shopping centre",
+   "cat": "Convenience"
+  },
+  {
+   "id": "atm",
+   "label": "ATM",
+   "cat": "Convenience"
+  },
+  {
+   "id": "laundry",
+   "label": "Laundry",
+   "cat": "Convenience"
+  },
+  {
+   "id": "cafeteria",
+   "label": "Cafeteria",
+   "cat": "Commercial"
+  },
+  {
+   "id": "conference_room",
+   "label": "Conference room",
+   "cat": "Commercial"
+  },
+  {
+   "id": "loading_dock",
+   "label": "Loading dock",
+   "cat": "Commercial"
+  },
+  {
+   "id": "truck_access",
+   "label": "Truck access",
+   "cat": "Commercial"
+  },
+  {
+   "id": "fire_noc",
+   "label": "Fire NOC",
+   "cat": "Commercial"
+  }
+ ],
+ "projects": [
+  {
+   "id": "p1",
+   "name": "Merlin Verve",
+   "dev": "Merlin Group",
+   "type": "Residential Complex",
+   "rera": "WBRERA/P/KOL/2024/000123",
+   "status": "uc",
+   "complete": "Dec 2027",
+   "size": "16",
+   "towers": "6",
+   "units": "480",
+   "configs": [
+    "2 BHK",
+    "3 BHK",
+    "4 BHK"
+   ],
+   "sale": true,
+   "rent": true,
+   "saleFrom": "68 L",
+   "saleTo": "1.5 Cr",
+   "rentFrom": "28,000",
+   "rentTo": "45,000",
+   "place": {
+    "name": "Sector V",
+    "sub": "Salt Lake, Kolkata, West Bengal 700091",
+    "pin": "700091",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "addr": {
+    "tower": "Tower 1–6",
+    "street": "Sector V, Salt Lake",
+    "landmark": "Near Technopolis",
+    "pin": "700091",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "amenities": [
+    "clubhouse",
+    "swimming_pool",
+    "gym",
+    "jogging_track",
+    "play_area",
+    "security"
+   ],
+   "brochure": "Merlin_Verve_brochure.pdf",
+   "sizeUnit": "acres",
+   "layouts": [
+    {
+     "cfg": "2 BHK",
+     "name": "Type A",
+     "area": "1,020",
+     "baths": "2",
+     "units": "160"
+    },
+    {
+     "cfg": "3 BHK",
+     "name": "Type B",
+     "area": "1,450",
+     "baths": "3",
+     "units": "240"
+    },
+    {
+     "cfg": "3 BHK",
+     "name": "Type C (corner)",
+     "area": "1,480",
+     "baths": "3",
+     "units": "40"
+    },
+    {
+     "cfg": "4 BHK",
+     "name": "Type D",
+     "area": "2,100",
+     "baths": "4",
+     "units": "40"
+    }
+   ],
+   "charges": [
+    {
+     "name": "ADC (Additional Development Charges)",
+     "rate": "150",
+     "from": "2026-04-01"
+    },
+    {
+     "name": "Club charges",
+     "rate": "60",
+     "from": "2026-04-01"
+    }
+   ],
+   "photos": 0
+  },
+  {
+   "id": "p2",
+   "name": "Rosedale Garden",
+   "dev": "Rosedale Developers",
+   "type": "Township",
+   "rera": "WBRERA/P/KOL/2022/000871",
+   "status": "ready",
+   "complete": "",
+   "size": "8",
+   "towers": "4",
+   "units": "210",
+   "configs": [
+    "2 BHK",
+    "3 BHK"
+   ],
+   "sale": true,
+   "rent": true,
+   "saleFrom": "72 L",
+   "saleTo": "1.2 Cr",
+   "rentFrom": "24,000",
+   "rentTo": "38,000",
+   "place": {
+    "name": "Action Area II",
+    "sub": "New Town, Kolkata, West Bengal 700156",
+    "pin": "700156",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "addr": {
+    "tower": "",
+    "street": "Action Area I, New Town",
+    "landmark": "",
+    "pin": "700160",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "amenities": [
+    "clubhouse",
+    "garden",
+    "security",
+    "lift"
+   ],
+   "brochure": "",
+   "sizeUnit": "acres",
+   "layouts": [],
+   "charges": [],
+   "photos": 0
+  },
+  {
+   "id": "p3",
+   "name": "Ideal Grandeur",
+   "dev": "Ideal Group",
+   "type": "Residential Complex",
+   "rera": "",
+   "status": "uc",
+   "complete": "Mar 2027",
+   "size": "5.5",
+   "towers": "3",
+   "units": "180",
+   "configs": [
+    "2 BHK",
+    "3 BHK"
+   ],
+   "sale": true,
+   "rent": false,
+   "saleFrom": "65 L",
+   "saleTo": "95 L",
+   "rentFrom": "",
+   "rentTo": "",
+   "place": {
+    "name": "Action Area II",
+    "sub": "New Town, Kolkata, West Bengal 700156",
+    "pin": "700156",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "addr": {
+    "tower": "",
+    "street": "Action Area II, New Town",
+    "landmark": "",
+    "pin": "700156",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "amenities": [
+    "gym",
+    "security",
+    "garden"
+   ],
+   "brochure": "",
+   "sizeUnit": "acres",
+   "layouts": [],
+   "charges": [],
+   "photos": 0
+  },
+  {
+   "id": "p4",
+   "name": "12A, Rajarhat Rd (standalone)",
+   "dev": "",
+   "type": "Independent house",
+   "rera": "",
+   "status": "ready",
+   "complete": "",
+   "size": "",
+   "towers": "1",
+   "units": "1",
+   "configs": [
+    "4 BHK"
+   ],
+   "sale": false,
+   "rent": true,
+   "saleFrom": "",
+   "saleTo": "",
+   "rentFrom": "55,000",
+   "rentTo": "55,000",
+   "place": {
+    "name": "Rajarhat Main Road",
+    "sub": "Rajarhat, Kolkata, West Bengal 700135",
+    "pin": "700135",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "addr": {
+    "tower": "12A",
+    "street": "Rajarhat Main Road",
+    "landmark": "",
+    "pin": "700135",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "amenities": [
+    "garden"
+   ],
+   "brochure": "",
+   "layouts": [],
+   "charges": [],
+   "photos": 0
+  },
+  {
+   "id": "p5",
+   "name": "Godrej Meridien",
+   "dev": "Godrej Properties",
+   "type": "Residential Complex",
+   "rera": "WBRERA/P/KOL/2023/000455",
+   "status": "uc",
+   "complete": "Jun 2028",
+   "size": "3.2",
+   "towers": "2",
+   "units": "96",
+   "configs": [
+    "4 BHK"
+   ],
+   "sale": true,
+   "rent": false,
+   "saleFrom": "3.8 Cr",
+   "saleTo": "5 Cr",
+   "rentFrom": "",
+   "rentTo": "",
+   "place": {
+    "name": "Alipore Road",
+    "sub": "Alipore, Kolkata, West Bengal 700027",
+    "pin": "700027",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "addr": {
+    "tower": "",
+    "street": "Alipore Road",
+    "landmark": "",
+    "pin": "700027",
+    "city": "Kolkata",
+    "state": "West Bengal"
+   },
+   "amenities": [
+    "swimming_pool",
+    "clubhouse",
+    "cctv"
+   ],
+   "brochure": "",
+   "sizeUnit": "acres",
+   "layouts": [],
+   "charges": [],
+   "photos": 0
+  }
+ ],
+ "props": [
+  {
+   "id": "RS001",
+   "purpose": "sale",
+   "cat": "Residential",
+   "title": "3 BHK Apartment",
+   "projectId": "p1",
+   "unit": "Tower 3, 7th floor",
+   "loc": "Sector V, Salt Lake",
+   "bhk": 3,
+   "area": 1450,
+   "furn": "Semi-furnished",
+   "priceL": 135,
+   "quotedL": 138,
+   "status": "Available",
+   "source": "Owner",
+   "owner": "S. Ghosh",
+   "created": "2026-07-20",
+   "carpet": 1180,
+   "bu": 1300,
+   "sbu": 1450,
+   "sub": "Flat / Apartment"
+  },
+  {
+   "id": "RS002",
+   "purpose": "sale",
+   "cat": "Residential",
+   "title": "2 BHK Flat · Primary",
+   "projectId": "p3",
+   "unit": "Tower 1, 4th floor",
+   "loc": "Action Area II, New Town",
+   "bhk": 2,
+   "area": 980,
+   "furn": "Unfurnished",
+   "priceL": 68,
+   "quotedL": 68,
+   "status": "Available",
+   "source": "Developer",
+   "owner": "—",
+   "created": "2026-07-27"
+  },
+  {
+   "id": "RS003",
+   "purpose": "sale",
+   "cat": "Residential",
+   "title": "4 BHK Independent Floor",
+   "projectId": "p5",
+   "unit": "Alipore Road",
+   "loc": "Alipore",
+   "bhk": 4,
+   "area": 2600,
+   "furn": "Semi-furnished",
+   "priceL": 420,
+   "quotedL": 425,
+   "status": "On hold",
+   "source": "Broker",
+   "owner": "R. Sen",
+   "created": "2026-08-03"
+  },
+  {
+   "id": "RS004",
+   "purpose": "sale",
+   "cat": "Residential",
+   "title": "3 BHK Apartment",
+   "projectId": "p1",
+   "unit": "Tower 3, 11th floor",
+   "loc": "Sector V, Salt Lake",
+   "bhk": 3,
+   "area": 1480,
+   "furn": "Unfurnished",
+   "priceL": 141,
+   "quotedL": 144,
+   "status": "Available",
+   "source": "Owner",
+   "owner": "P. Dey",
+   "created": "2026-08-10"
+  },
+  {
+   "id": "RR001",
+   "purpose": "rent",
+   "cat": "Residential",
+   "title": "2 BHK Flat",
+   "projectId": null,
+   "unit": "Ballygunge Place",
+   "loc": "Ballygunge",
+   "bhk": 2,
+   "area": 1050,
+   "furn": "Furnished",
+   "rentK": 38,
+   "status": "Available",
+   "source": "Portal",
+   "owner": "K. Basu",
+   "created": "2026-08-17"
+  },
+  {
+   "id": "RR002",
+   "purpose": "rent",
+   "cat": "Residential",
+   "title": "2 BHK Flat",
+   "projectId": "p1",
+   "unit": "Tower 2, 6th floor",
+   "loc": "Sector V, Salt Lake",
+   "bhk": 2,
+   "area": 1020,
+   "furn": "Semi-furnished",
+   "rentK": 32,
+   "status": "Available",
+   "source": "Owner",
+   "owner": "A. Iyer",
+   "created": "2026-08-24"
+  },
+  {
+   "id": "RR003",
+   "purpose": "rent",
+   "cat": "Residential",
+   "title": "1 BHK Flat",
+   "projectId": null,
+   "unit": "Garia Station Rd",
+   "loc": "Garia",
+   "bhk": 1,
+   "area": 520,
+   "furn": "Unfurnished",
+   "rentK": 14.5,
+   "status": "Rented/Leased",
+   "source": "Owner",
+   "owner": "M. Khan",
+   "created": "2026-08-31"
+  },
+  {
+   "id": "CR001",
+   "purpose": "rent",
+   "cat": "Commercial",
+   "title": "Office Space",
+   "projectId": null,
+   "unit": "Sector V",
+   "loc": "Sector V, Salt Lake",
+   "bhk": 0,
+   "area": 850,
+   "furn": "Semi-furnished",
+   "rentK": 85,
+   "status": "Available",
+   "source": "Owner",
+   "owner": "T. Dutta",
+   "created": "2026-09-07"
+  },
+  {
+   "id": "LS001",
+   "purpose": "sale",
+   "cat": "Land",
+   "title": "Plot · 5 Katha",
+   "projectId": null,
+   "unit": "Rajarhat",
+   "loc": "Rajarhat",
+   "bhk": 0,
+   "area": 3600,
+   "furn": "—",
+   "priceL": 55,
+   "quotedL": 58,
+   "status": "Sold",
+   "source": "Referral",
+   "owner": "A. Iyer",
+   "created": "2026-09-14"
+  }
+ ],
+ "leads": [
+  {
+   "id": "l1",
+   "name": "Sunita Agarwal",
+   "phone": "+91 98630 34210",
+   "source": "99acres",
+   "intent": "buy",
+   "stage": "Converted",
+   "sub": "Properties offered",
+   "budget": "₹1.0–1.3 Cr",
+   "want": "2 BHK · New Town",
+   "assigned": "Anil Sharma",
+   "tags": [
+    "NRI"
+   ],
+   "act": [
+    [
+     "Call",
+     "Asked for 2 BHK New Town options",
+     "Yesterday"
+    ],
+    [
+     "System",
+     "Lead created from 99acres",
+     "3 days ago"
+    ]
+   ],
+   "links": [
+    {
+     "url": "https://www.99acres.com/search/property/buy/new-town-kolkata",
+     "type": "Portal listing",
+     "note": "Enquiry came from this listing page",
+     "at": "2026-09-25"
+    }
+   ],
+   "created": "2026-08-19",
+   "basic": {
+    "locText": "New Town",
+    "min": 100,
+    "max": 130,
+    "bhk": 2
+   }
+  },
+  {
+   "id": "l2",
+   "name": "Kavita Shah",
+   "phone": "+91 97630 34455",
+   "source": "Magicbricks",
+   "intent": "buy",
+   "stage": "Lead",
+   "sub": "",
+   "budget": "₹1.1–1.4 Cr",
+   "want": "3 BHK · Salt Lake",
+   "assigned": "Anil Sharma",
+   "tags": [
+    "Urgent"
+   ],
+   "act": [
+    [
+     "Call",
+     "Connected — call back for options",
+     "2 days ago"
+    ]
+   ],
+   "links": [
+    {
+     "url": "https://www.instagram.com/p/Cx1234abcd/",
+     "type": "Social media post",
+     "note": "Reel on Merlin Verve",
+     "at": "2026-09-26"
+    }
+   ],
+   "created": "2026-08-25",
+   "basic": {
+    "locText": "Salt Lake",
+    "min": 110,
+    "max": 140,
+    "bhk": 3
+   }
+  },
+  {
+   "id": "l3",
+   "name": "Rohit Banerjee",
+   "phone": "+91 90630 34108",
+   "source": "Friend & Family",
+   "intent": "rent",
+   "stage": "Qualified",
+   "sub": "",
+   "budget": "₹30–40k/mo",
+   "want": "2 BHK · Ballygunge",
+   "assigned": "Anil Sharma",
+   "tags": [],
+   "act": [
+    [
+     "WhatsApp",
+     "Shared 2 BHK rentals",
+     "Today"
+    ]
+   ],
+   "created": "2026-08-31",
+   "basic": {
+    "locText": "Ballygunge",
+    "min": 30,
+    "max": 40,
+    "bhk": 2
+   }
+  },
+  {
+   "id": "l4",
+   "name": "Amit Desai",
+   "phone": "+91 99630 34882",
+   "source": "Direct Reference",
+   "intent": "buy",
+   "stage": "Lead",
+   "sub": "",
+   "budget": "₹40–60 L",
+   "want": "Plot · Rajarhat",
+   "assigned": "Anil Sharma",
+   "tags": [
+    "NRI",
+    "Investor"
+   ],
+   "act": [],
+   "created": "2026-09-06",
+   "basic": {
+    "locText": "Rajarhat",
+    "min": 40,
+    "max": 60,
+    "bhk": 0
+   }
+  },
+  {
+   "id": "l5",
+   "name": "Neha Kapoor",
+   "phone": "+91 98630 34360",
+   "source": "99acres",
+   "intent": "rent",
+   "stage": "Converted",
+   "sub": "Requirement gathering",
+   "budget": "₹80k–1 L/mo",
+   "want": "Office · Sector V",
+   "assigned": "Anil Sharma",
+   "tags": [],
+   "act": [
+    [
+     "Note",
+     "Needs 800–1,000 sq ft near metro",
+     "Today"
+    ]
+   ],
+   "created": "2026-09-12",
+   "basic": {
+    "locText": "Sector V",
+    "min": 80,
+    "max": 100,
+    "bhk": 0
+   }
+  },
+  {
+   "id": "l6",
+   "name": "Manish Roy",
+   "phone": "+91 91630 34700",
+   "source": "Associate Broker",
+   "intent": "buy",
+   "stage": "Not qualified",
+   "sub": "",
+   "budget": "—",
+   "want": "Farmhouse",
+   "assigned": "Anil Sharma",
+   "tags": [],
+   "act": [
+    [
+     "Note",
+     "Requirement outside our areas",
+     "5 days ago"
+    ]
+   ],
+   "created": "2026-09-18",
+   "basic": {
+    "locText": "",
+    "min": 0,
+    "max": 0,
+    "bhk": 0
+   }
+  }
+ ],
+ "prospects": [
+  {
+   "id": "c1",
+   "name": "Priya Nair",
+   "type": "Buyer",
+   "nri": false,
+   "city": "Kolkata",
+   "source": "99acres",
+   "assigned": "Anil Sharma",
+   "phone": "+91 98630 34731",
+   "email": "priya.n@email.com",
+   "lang": "English",
+   "notes": "Wants near Sector V metro",
+   "created": "2026-07-30",
+   "waOk": true
+  },
+  {
+   "id": "c2",
+   "name": "Sunita Agarwal",
+   "type": "Buyer",
+   "nri": true,
+   "city": "Dubai",
+   "source": "99acres",
+   "assigned": "Anil Sharma",
+   "phone": "+91 98630 34210",
+   "email": "s.agarwal@email.com",
+   "lang": "Hindi",
+   "notes": "",
+   "created": "2026-08-08",
+   "waOk": true
+  },
+  {
+   "id": "c3",
+   "name": "Rohit Banerjee",
+   "type": "Tenant",
+   "nri": false,
+   "city": "Kolkata",
+   "source": "Friend & Family",
+   "assigned": "Anil Sharma",
+   "phone": "+91 90630 34108",
+   "email": "",
+   "lang": "Bengali",
+   "notes": "",
+   "created": "2026-08-17",
+   "waOk": true
+  },
+  {
+   "id": "c4",
+   "name": "S. Ghosh",
+   "type": "Owner",
+   "nri": false,
+   "city": "Kolkata",
+   "source": "Direct Reference",
+   "assigned": "Anil Sharma",
+   "phone": "+91 98630 34015",
+   "email": "",
+   "lang": "Bengali",
+   "notes": "Owns RS001",
+   "created": "2026-08-26",
+   "waOk": false
+  }
+ ],
+ "reqs": [
+  {
+   "id": "REQ-2031",
+   "cid": "c1",
+   "purpose": "sale",
+   "type": "Apartment / Flat",
+   "locs": [
+    "Salt Lake",
+    "New Town"
+   ],
+   "min": 120,
+   "max": 150,
+   "bhk": 3,
+   "area": "1,200–1,600 sq ft",
+   "parking": "1 covered · must-have",
+   "timeline": "1–2 months",
+   "status": "Active",
+   "notes": "Wants near Sector V metro"
+  },
+  {
+   "id": "REQ-2034",
+   "cid": "c3",
+   "purpose": "rent",
+   "type": "Apartment / Flat",
+   "locs": [
+    "Ballygunge"
+   ],
+   "min": 30,
+   "max": 40,
+   "bhk": 2,
+   "area": "900–1,100 sq ft",
+   "parking": "Not needed",
+   "timeline": "Immediate",
+   "status": "Active",
+   "notes": ""
+  },
+  {
+   "id": "REQ-2036",
+   "cid": "c2",
+   "purpose": "sale",
+   "type": "Apartment / Flat",
+   "locs": [
+    "New Town"
+   ],
+   "min": 60,
+   "max": 80,
+   "bhk": 2,
+   "area": "900–1,100 sq ft",
+   "parking": "1 open",
+   "timeline": "3–6 months",
+   "status": "On hold",
+   "notes": "NRI — visits next month"
+  }
+ ],
+ "visits": [
+  {
+   "id": "VIS-3392",
+   "cid": "c3",
+   "prop": "RR002",
+   "date": "2026-09-28",
+   "time": "16:00",
+   "dur": 45,
+   "status": "Scheduled",
+   "agent": "Anil Sharma",
+   "notes": "Owner will be present",
+   "log": [
+    "Visit scheduled"
+   ],
+   "when": "Mon 28 Sep · 4:00 pm"
+  },
+  {
+   "id": "VIS-3387",
+   "cid": "c1",
+   "prop": "RS001",
+   "date": "2026-09-29",
+   "time": "10:30",
+   "dur": 45,
+   "status": "Confirmed",
+   "agent": "Anil Sharma",
+   "notes": "Meet at Sector V metro gate",
+   "log": [
+    "Rescheduled 1:00 PM → 3:00 PM → 10:30 AM",
+    "WhatsApp confirmation sent",
+    "Visit scheduled"
+   ],
+   "when": "Tue 29 Sep · 10:30 am"
+  },
+  {
+   "id": "VIS-3390",
+   "cid": "c2",
+   "prop": "RS002",
+   "date": "2026-09-29",
+   "time": "10:45",
+   "dur": 60,
+   "status": "Scheduled",
+   "agent": "Anil Sharma",
+   "notes": "",
+   "log": [
+    "Visit scheduled"
+   ],
+   "when": "Tue 29 Sep · 10:45 am"
+  },
+  {
+   "id": "VIS-3393",
+   "cid": "c1",
+   "prop": "RS004",
+   "date": "2026-09-29",
+   "time": "17:30",
+   "dur": 45,
+   "status": "Scheduled",
+   "agent": "Anil Sharma",
+   "notes": "",
+   "log": [
+    "Visit scheduled"
+   ],
+   "when": "Tue 29 Sep · 5:30 pm"
+  },
+  {
+   "id": "VIS-3391",
+   "cid": "c3",
+   "prop": "RR001",
+   "date": "2026-09-30",
+   "time": "12:00",
+   "dur": 45,
+   "status": "Scheduled",
+   "agent": "Anil Sharma",
+   "notes": "",
+   "log": [
+    "Visit scheduled"
+   ],
+   "when": "Wed 30 Sep · 12:00 pm"
+  },
+  {
+   "id": "VIS-3394",
+   "cid": "c2",
+   "prop": "RS001",
+   "date": "2026-10-02",
+   "time": "15:00",
+   "dur": 60,
+   "status": "Scheduled",
+   "agent": "Anil Sharma",
+   "notes": "NRI prospect — video call if she is away",
+   "log": [
+    "Visit scheduled"
+   ],
+   "when": "Fri 2 Oct · 3:00 pm"
+  },
+  {
+   "id": "VIS-3370",
+   "cid": "c1",
+   "prop": "RS004",
+   "date": "2026-09-25",
+   "time": "11:00",
+   "dur": 45,
+   "status": "Completed",
+   "agent": "Anil Sharma",
+   "notes": "Liked east balcony",
+   "log": [
+    "Outcome: Interested"
+   ],
+   "when": "Fri 25 Sep · 11:00 am"
+  }
+ ],
+ "fus": [
+  {
+   "id": "f1",
+   "who": "Kavita Shah",
+   "kind": "Call",
+   "note": "Asked for 2 BHK New Town options",
+   "due": "overdue",
+   "when": "2 days ago",
+   "done": false
+  },
+  {
+   "id": "f2",
+   "who": "Priya Nair",
+   "kind": "Visit",
+   "note": "RS001 · 3 BHK, Salt Lake Sector V",
+   "due": "today",
+   "when": "10:30",
+   "done": false
+  },
+  {
+   "id": "f3",
+   "who": "Rohit Banerjee",
+   "kind": "Call",
+   "note": "Share 2 BHK Ballygunge rentals",
+   "due": "today",
+   "when": "12:00",
+   "done": false
+  },
+  {
+   "id": "f4",
+   "who": "Amit Desai (NRI)",
+   "kind": "WhatsApp",
+   "note": "Send brochure on WhatsApp",
+   "due": "today",
+   "when": "15:00",
+   "done": false
+  },
+  {
+   "id": "f5",
+   "who": "Neha Kapoor",
+   "kind": "WhatsApp",
+   "note": "Send Sector V office list",
+   "due": "upcoming",
+   "when": "Tue 30 Sep · 14:00",
+   "done": false
+  },
+  {
+   "id": "f6",
+   "who": "Anil Sharma",
+   "kind": "Call",
+   "note": "Discuss offer feedback with Priya Nair",
+   "due": "upcoming",
+   "when": "Fri 2 Oct · 11:00",
+   "done": false
+  }
+ ],
+ "deals": [
+  {
+   "id": "DEAL-0142",
+   "cid": "c1",
+   "prop": "RS001",
+   "kind": "sale",
+   "stage": "agreement",
+   "ask": 138,
+   "close": 130,
+   "token": {
+    "on": true,
+    "amt": "2,00,000",
+    "date": "2026-09-02",
+    "note": ""
+   },
+   "agr": {
+    "on": true,
+    "date": "2026-09-10",
+    "note": ""
+   },
+   "reg": {
+    "on": false,
+    "date": "",
+    "note": ""
+   },
+   "bType": "%",
+   "bBuyer": 1,
+   "bOwner": 1,
+   "lostReason": "",
+   "log": [
+    [
+     "Buyer offered ₹1.28 Cr",
+     "seller countered ₹1.35 Cr"
+    ],
+    [
+     "Agreed at ₹1.30 Cr",
+     "verbal"
+    ]
+   ],
+   "expected": "2026-10-28",
+   "stageSince": "2026-09-10",
+   "upd": "2026-09-27",
+   "offers": [
+    {
+     "by": "buyer",
+     "amt": 128,
+     "terms": "Cash · possession in 60 days",
+     "status": "Countered",
+     "at": "25 Aug"
+    },
+    {
+     "by": "seller",
+     "amt": 135,
+     "terms": "Furnishings excluded",
+     "status": "Countered",
+     "at": "27 Aug"
+    },
+    {
+     "by": "buyer",
+     "amt": 130,
+     "terms": "Home loan · 90 days",
+     "status": "Accepted",
+     "at": "31 Aug"
+    }
+   ],
+   "loan": {
+    "required": true,
+    "bank": "HDFC Bank",
+    "amt": "9000000",
+    "stage": "Sanctioned",
+    "applied": "2026-09-12",
+    "sanctioned": "2026-09-22",
+    "disbursed": "",
+    "contact": "R. Menon · +91 98555 26512"
+   },
+   "tasks": [
+    {
+     "t": "Collect signed agreement copy",
+     "due": "2026-09-30",
+     "done": false
+    },
+    {
+     "t": "Book registration slot",
+     "due": "2026-10-05",
+     "done": false
+    },
+    {
+     "t": "Share token receipt with buyer",
+     "due": "2026-09-11",
+     "done": true
+    }
+   ],
+   "parties": [
+    {
+     "role": "Buyer",
+     "name": "Priya Nair",
+     "phone": "+91 98630 34731"
+    },
+    {
+     "role": "Owner",
+     "name": "S. Ghosh",
+     "phone": "+91 98630 34015"
+    },
+    {
+     "role": "Lawyer",
+     "name": "Adv. S. Mukherjee",
+     "phone": "+91 98630 34771"
+    },
+    {
+     "role": "Bank contact",
+     "name": "R. Menon (HDFC)",
+     "phone": "+91 98630 34512"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "Deal created — ask ₹1.38 Cr",
+     "by": "Anil Sharma",
+     "at": "2026-08-25",
+     "seq": 0
+    },
+    {
+     "t": "Negotiation successful — terms agreed at ₹1.3 Cr",
+     "by": "Anil Sharma",
+     "at": "2026-09-01",
+     "seq": 1,
+     "k": "agreed"
+    },
+    {
+     "t": "Token paid ₹2,00,000",
+     "by": "Anil Sharma",
+     "at": "2026-09-02",
+     "seq": 2,
+     "k": "token"
+    },
+    {
+     "t": "Agreement signed",
+     "by": "Anil Sharma",
+     "at": "2026-09-10",
+     "seq": 3,
+     "k": "agr"
+    }
+   ],
+   "bid": 130,
+   "openedBy": "Anil Sharma",
+   "closedBy": "Anil Sharma",
+   "closedByEdited": true,
+   "created": "2026-08-25",
+   "agreedOn": "2026-09-01",
+   "notes": "",
+   "docs": [
+    {
+     "name": "Token receipt",
+     "who": "broker",
+     "st": "Verified",
+     "req": "",
+     "rec": "2026-09-10",
+     "fid": "sd20"
+    },
+    {
+     "name": "Agreement to sell",
+     "who": "lawyer",
+     "st": "Received",
+     "req": "",
+     "rec": "2026-09-10",
+     "fid": "sd21"
+    },
+    {
+     "name": "Sale deed",
+     "who": "lawyer",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Registration receipt",
+     "who": "lawyer",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Loan sanction letter",
+     "who": "bank",
+     "st": "Verified",
+     "req": "",
+     "rec": "2026-09-10",
+     "fid": "sd22"
+    },
+    {
+     "name": "NOC (society / builder)",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — buyer",
+     "who": "client",
+     "st": "Verified",
+     "req": "",
+     "rec": "2026-09-10",
+     "fid": "sd23"
+    },
+    {
+     "name": "KYC — owner",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Property tax receipt",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    }
+   ],
+   "sched": [
+    {
+     "k": "token",
+     "label": "Token amount",
+     "amt": 200000,
+     "due": "On token",
+     "paid": true
+    },
+    {
+     "k": "agr",
+     "label": "On agreement (10% of price)",
+     "amt": 1100000,
+     "due": "On agreement",
+     "paid": true
+    },
+    {
+     "k": "reg",
+     "label": "Balance on registration",
+     "amt": 11700000,
+     "due": "On registration",
+     "paid": false
+    }
+   ],
+   "shares": [],
+   "reqs": [],
+   "prob": 75
+  },
+  {
+   "id": "DEAL-0145",
+   "cid": "c3",
+   "prop": "RR001",
+   "kind": "rent",
+   "stage": "negotiation",
+   "ask": 38,
+   "close": "",
+   "token": {
+    "on": false,
+    "amt": "",
+    "date": "",
+    "note": ""
+   },
+   "agr": {
+    "on": false,
+    "date": "",
+    "note": ""
+   },
+   "reg": {
+    "on": false,
+    "date": "",
+    "note": ""
+   },
+   "bType": "fixed",
+   "bBuyer": 36000,
+   "bOwner": 36000,
+   "lostReason": "",
+   "log": [
+    [
+     "Tenant offered ₹34,000",
+     "owner asks ₹38,000"
+    ]
+   ],
+   "expected": "2026-10-05",
+   "stageSince": "2026-09-14",
+   "upd": "2026-09-18",
+   "offers": [
+    {
+     "by": "buyer",
+     "amt": 34,
+     "terms": "Move-in 1 Oct · 11-month lease",
+     "status": "Countered",
+     "at": "16 Sep"
+    },
+    {
+     "by": "seller",
+     "amt": 38,
+     "terms": "Two months lock-in",
+     "status": "Open",
+     "at": "18 Sep"
+    }
+   ],
+   "bid": 34,
+   "openedBy": "Anil Sharma",
+   "closedBy": "Anil Sharma",
+   "created": "2026-09-14",
+   "leaseStart": "2026-10-01",
+   "tenure": 11,
+   "depMonths": 2,
+   "notes": "",
+   "tasks": [],
+   "renewals": [],
+   "rem": {
+    "days": [
+     60,
+     30
+    ],
+    "to": {
+     "tenant": true,
+     "owner": true,
+     "team": true
+    }
+   },
+   "leaseEnd": "2027-08-31",
+   "docs": [
+    {
+     "name": "Rent agreement",
+     "who": "lawyer",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Security deposit receipt",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — tenant",
+     "who": "client",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — landlord",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Police verification",
+     "who": "client",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Society NOC",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    }
+   ],
+   "sched": [
+    {
+     "k": "deposit",
+     "label": "Security deposit (2 months)",
+     "amt": 68000,
+     "due": "Before move-in",
+     "paid": false
+    },
+    {
+     "k": "rent1",
+     "label": "First month rent",
+     "amt": 34000,
+     "due": "Before move-in",
+     "paid": false
+    }
+   ],
+   "depAmt": 68000,
+   "loan": {
+    "required": false,
+    "bank": "",
+    "amt": "",
+    "stage": "Not started",
+    "applied": "",
+    "sanctioned": "",
+    "disbursed": "",
+    "contact": ""
+   },
+   "parties": [
+    {
+     "role": "Tenant",
+     "name": "Rohit Banerjee",
+     "phone": "+91 90630 34108"
+    },
+    {
+     "role": "Landlord",
+     "name": "K. Basu",
+     "phone": "+91 98630 34015"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "Lead created · Friend & Family",
+     "by": "Anil Sharma",
+     "at": "2026-09-07",
+     "seq": 0
+    },
+    {
+     "t": "Deal created — ask ₹38,000/mo",
+     "by": "Anil Sharma",
+     "at": "2026-09-14",
+     "seq": 1
+    }
+   ],
+   "shares": [],
+   "reqs": [],
+   "prob": 30
+  },
+  {
+   "id": "DEAL-0139",
+   "cid": "c2",
+   "prop": "RS002",
+   "kind": "sale",
+   "stage": "closed_won",
+   "ask": 70,
+   "close": 68,
+   "token": {
+    "on": true,
+    "amt": "1,00,000",
+    "date": "2026-08-12",
+    "note": ""
+   },
+   "agr": {
+    "on": true,
+    "date": "2026-08-21",
+    "note": ""
+   },
+   "reg": {
+    "on": true,
+    "date": "2026-09-09",
+    "note": ""
+   },
+   "bType": "%",
+   "bBuyer": 1,
+   "bOwner": 1,
+   "lostReason": "",
+   "log": [],
+   "expected": "2026-09-09",
+   "closedOn": "2026-09-09",
+   "stageSince": "2026-09-09",
+   "upd": "2026-09-09",
+   "bid": 66,
+   "openedBy": "Anil Sharma",
+   "closedBy": "Anil Sharma",
+   "created": "2026-08-05",
+   "agreedOn": "2026-08-10",
+   "notes": "",
+   "offers": [],
+   "tasks": [],
+   "docs": [
+    {
+     "name": "Token receipt",
+     "who": "broker",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Agreement to sell",
+     "who": "lawyer",
+     "st": "Received",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Sale deed",
+     "who": "lawyer",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Registration receipt",
+     "who": "lawyer",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Loan sanction letter",
+     "who": "bank",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "NOC (society / builder)",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — buyer",
+     "who": "client",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — owner",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Property tax receipt",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    }
+   ],
+   "sched": [
+    {
+     "k": "token",
+     "label": "Token amount",
+     "amt": 100000,
+     "due": "On token",
+     "paid": true
+    },
+    {
+     "k": "agr",
+     "label": "On agreement (10% of price)",
+     "amt": 580000,
+     "due": "On agreement",
+     "paid": true
+    },
+    {
+     "k": "reg",
+     "label": "Balance on registration",
+     "amt": 6120000,
+     "due": "On registration",
+     "paid": true
+    }
+   ],
+   "loan": {
+    "required": false,
+    "bank": "",
+    "amt": "",
+    "stage": "Not started",
+    "applied": "",
+    "sanctioned": "",
+    "disbursed": "",
+    "contact": ""
+   },
+   "parties": [
+    {
+     "role": "Buyer",
+     "name": "Sunita Agarwal",
+     "phone": "+91 98630 34210"
+    },
+    {
+     "role": "Owner",
+     "name": "—",
+     "phone": "+91 98630 34015"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "Lead created · 99acres",
+     "by": "Anil Sharma",
+     "at": "2026-07-29",
+     "seq": 0
+    },
+    {
+     "t": "Deal created — ask ₹70 L",
+     "by": "Anil Sharma",
+     "at": "2026-08-05",
+     "seq": 1
+    },
+    {
+     "t": "Negotiation successful — terms agreed at ₹68 L",
+     "by": "Anil Sharma",
+     "at": "2026-08-10",
+     "seq": 2,
+     "k": "agreed"
+    },
+    {
+     "t": "Token paid ₹1,00,000",
+     "by": "Anil Sharma",
+     "at": "2026-08-12",
+     "seq": 3,
+     "k": "token"
+    },
+    {
+     "t": "Agreement signed",
+     "by": "Anil Sharma",
+     "at": "2026-08-21",
+     "seq": 4,
+     "k": "agr"
+    },
+    {
+     "t": "Registration done",
+     "by": "Anil Sharma",
+     "at": "2026-09-09",
+     "seq": 5,
+     "k": "reg"
+    },
+    {
+     "t": "Closed — sold",
+     "by": "Anil Sharma",
+     "at": "2026-09-09",
+     "seq": 6,
+     "k": "closed"
+    }
+   ],
+   "shares": [],
+   "reqs": [],
+   "prob": 100
+  },
+  {
+   "id": "DEAL-0131",
+   "cid": "c3",
+   "prop": "RR003",
+   "kind": "rent",
+   "stage": "closed_won",
+   "ask": 15,
+   "close": 14.5,
+   "token": {
+    "on": false,
+    "amt": "",
+    "date": "",
+    "note": ""
+   },
+   "agr": {
+    "on": true,
+    "date": "2025-11-10",
+    "note": ""
+   },
+   "reg": {
+    "on": false,
+    "date": "",
+    "note": ""
+   },
+   "bType": "fixed",
+   "bBuyer": 14500,
+   "bOwner": 14500,
+   "lostReason": "",
+   "log": [],
+   "expected": "2025-11-12",
+   "closedOn": "2025-11-12",
+   "stageSince": "2025-11-12",
+   "upd": "2025-11-12",
+   "bid": 14,
+   "openedBy": "Anil Sharma",
+   "closedBy": "Anil Sharma",
+   "created": "2025-10-28",
+   "agreedOn": "2025-11-05",
+   "leaseStart": "2025-11-12",
+   "tenure": 11,
+   "depMonths": 2,
+   "notes": "",
+   "offers": [],
+   "tasks": [],
+   "renewals": [],
+   "rem": {
+    "days": [
+     60,
+     30
+    ],
+    "to": {
+     "tenant": true,
+     "owner": true,
+     "team": true
+    }
+   },
+   "leaseEnd": "2026-10-11",
+   "docs": [
+    {
+     "name": "Rent agreement",
+     "who": "lawyer",
+     "st": "Received",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Security deposit receipt",
+     "who": "owner",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — tenant",
+     "who": "client",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — landlord",
+     "who": "owner",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Police verification",
+     "who": "client",
+     "st": "Received",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Society NOC",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    }
+   ],
+   "sched": [
+    {
+     "k": "deposit",
+     "label": "Security deposit (2 months)",
+     "amt": 29000,
+     "due": "Before move-in",
+     "paid": true
+    },
+    {
+     "k": "rent1",
+     "label": "First month rent",
+     "amt": 14500,
+     "due": "Before move-in",
+     "paid": true
+    }
+   ],
+   "depAmt": 29000,
+   "loan": {
+    "required": false,
+    "bank": "",
+    "amt": "",
+    "stage": "Not started",
+    "applied": "",
+    "sanctioned": "",
+    "disbursed": "",
+    "contact": ""
+   },
+   "parties": [
+    {
+     "role": "Tenant",
+     "name": "Rohit Banerjee",
+     "phone": "+91 90630 34108"
+    },
+    {
+     "role": "Landlord",
+     "name": "M. Khan",
+     "phone": "+91 98630 34015"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "Lead created · Friend & Family",
+     "by": "Anil Sharma",
+     "at": "2025-10-21",
+     "seq": 0
+    },
+    {
+     "t": "Deal created — ask ₹15,000/mo",
+     "by": "Anil Sharma",
+     "at": "2025-10-28",
+     "seq": 1
+    },
+    {
+     "t": "Negotiation successful — terms agreed at ₹14,500/mo",
+     "by": "Anil Sharma",
+     "at": "2025-11-05",
+     "seq": 2,
+     "k": "agreed"
+    },
+    {
+     "t": "Rent agreement signed",
+     "by": "Anil Sharma",
+     "at": "2025-11-10",
+     "seq": 3,
+     "k": "agr"
+    },
+    {
+     "t": "Closed — leased out",
+     "by": "Anil Sharma",
+     "at": "2025-11-12",
+     "seq": 4,
+     "k": "closed"
+    },
+    {
+     "t": "Lease commenced · ends Sun 11 Oct 2026",
+     "by": "Anil Sharma",
+     "at": "2025-11-12",
+     "seq": 5
+    }
+   ],
+   "shares": [],
+   "reqs": [],
+   "prob": 100
+  },
+  {
+   "id": "DEAL-0128",
+   "cid": "c2",
+   "prop": "RS003",
+   "kind": "sale",
+   "stage": "lost",
+   "ask": 425,
+   "close": 410,
+   "token": {
+    "on": false,
+    "amt": "",
+    "date": "",
+    "note": ""
+   },
+   "agr": {
+    "on": false,
+    "date": "",
+    "note": ""
+   },
+   "reg": {
+    "on": false,
+    "date": "",
+    "note": ""
+   },
+   "bType": "%",
+   "bBuyer": 1,
+   "bOwner": 1,
+   "lostReason": "Price gap",
+   "log": [
+    [
+     "Buyer stuck at ₹4.00 Cr",
+     "owner would not go below ₹4.25 Cr"
+    ]
+   ],
+   "expected": "2026-09-05",
+   "stageSince": "2026-09-05",
+   "upd": "2026-09-05",
+   "bid": 400,
+   "openedBy": "Anil Sharma",
+   "closedBy": "Anil Sharma",
+   "created": "2026-08-20",
+   "notes": "",
+   "offers": [],
+   "tasks": [],
+   "docs": [
+    {
+     "name": "Token receipt",
+     "who": "broker",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Agreement to sell",
+     "who": "lawyer",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Sale deed",
+     "who": "lawyer",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Registration receipt",
+     "who": "lawyer",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Loan sanction letter",
+     "who": "bank",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "NOC (society / builder)",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — buyer",
+     "who": "client",
+     "st": "Verified",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "KYC — owner",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    },
+    {
+     "name": "Property tax receipt",
+     "who": "owner",
+     "st": "Pending",
+     "req": "",
+     "rec": ""
+    }
+   ],
+   "sched": [
+    {
+     "k": "token",
+     "label": "Token amount",
+     "amt": 410000,
+     "due": "On token",
+     "paid": false
+    },
+    {
+     "k": "agr",
+     "label": "On agreement (10% of price)",
+     "amt": 3690000,
+     "due": "On agreement",
+     "paid": false
+    },
+    {
+     "k": "reg",
+     "label": "Balance on registration",
+     "amt": 36900000,
+     "due": "On registration",
+     "paid": false
+    }
+   ],
+   "loan": {
+    "required": false,
+    "bank": "",
+    "amt": "",
+    "stage": "Not started",
+    "applied": "",
+    "sanctioned": "",
+    "disbursed": "",
+    "contact": ""
+   },
+   "parties": [
+    {
+     "role": "Buyer",
+     "name": "Sunita Agarwal",
+     "phone": "+91 98630 34210"
+    },
+    {
+     "role": "Owner",
+     "name": "R. Sen",
+     "phone": "+91 98630 34015"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "Lead created · 99acres",
+     "by": "Anil Sharma",
+     "at": "2026-08-13",
+     "seq": 0
+    },
+    {
+     "t": "Deal created — ask ₹4.25 Cr",
+     "by": "Anil Sharma",
+     "at": "2026-08-20",
+     "seq": 1
+    },
+    {
+     "t": "Deal lost — Price gap",
+     "by": "Anil Sharma",
+     "at": "2026-09-05",
+     "seq": 2
+    }
+   ],
+   "shares": [],
+   "reqs": [],
+   "prob": 0
+  }
+ ],
+ "brok": [
+  {
+   "deal": "DEAL-0142",
+   "due": "2026-10-30",
+   "pay": [
+    {
+     "amt": 130000,
+     "from": "buyer",
+     "date": "2026-09-15",
+     "mode": "UPI",
+     "ref": "4029…",
+     "note": ""
+    }
+   ],
+   "gst": {
+    "buyer": false,
+    "owner": false
+   },
+   "gstPct": 18,
+   "discounts": [],
+   "deductions": [],
+   "splits": [
+    {
+     "name": "Anil Sharma",
+     "pct": 100,
+     "inc": "",
+     "note": ""
+    }
+   ],
+   "inv": null,
+   "reminders": [],
+   "notes": ""
+  },
+  {
+   "deal": "DEAL-0139",
+   "due": "2026-09-15",
+   "pay": [
+    {
+     "amt": 68000,
+     "from": "buyer",
+     "date": "2026-09-12",
+     "mode": "NEFT",
+     "ref": "8871…",
+     "note": ""
+    }
+   ],
+   "gst": {
+    "buyer": false,
+    "owner": false
+   },
+   "gstPct": 18,
+   "discounts": [],
+   "deductions": [],
+   "splits": [
+    {
+     "name": "Anil Sharma",
+     "pct": 100,
+     "inc": "",
+     "note": ""
+    }
+   ],
+   "inv": null,
+   "reminders": [],
+   "notes": ""
+  },
+  {
+   "deal": "DEAL-0131",
+   "due": "2026-08-31",
+   "pay": [
+    {
+     "amt": 14500,
+     "from": "buyer",
+     "date": "2026-08-20",
+     "mode": "UPI",
+     "ref": "2210…",
+     "note": ""
+    },
+    {
+     "amt": 14500,
+     "from": "owner",
+     "date": "2026-08-22",
+     "mode": "UPI",
+     "ref": "2218…",
+     "note": ""
+    }
+   ],
+   "gst": {
+    "buyer": false,
+    "owner": false
+   },
+   "gstPct": 18,
+   "discounts": [],
+   "deductions": [],
+   "splits": [
+    {
+     "name": "Anil Sharma",
+     "pct": 100,
+     "inc": "",
+     "note": ""
+    }
+   ],
+   "inv": null,
+   "reminders": [],
+   "notes": ""
+  }
+ ],
+ "team": [
+  {
+   "name": "Anil Sharma",
+   "role": "Owner",
+   "phone": "+91 98630 34001",
+   "corp": "+91 98630 34001",
+   "alt": "+91 98630 34990",
+   "email": "anil@sharmaproperty.in",
+   "status": "Active",
+   "leads": 0,
+   "seeNumbers": true
+  }
+ ],
+ "roles": [
+  [
+   "Own leads only",
+   [
+    0,
+    1,
+    1
+   ]
+  ],
+  [
+   "All leads",
+   [
+    1,
+    1,
+    0
+   ]
+  ],
+  [
+   "Export data",
+   [
+    1,
+    1,
+    0
+   ]
+  ],
+  [
+   "Hide owner details",
+   [
+    0,
+    0,
+    1
+   ]
+  ],
+  [
+   "Broker network sharing",
+   [
+    1,
+    1,
+    0
+   ]
+  ]
+ ],
+ "org": {
+  "name": "Sharma Property Consultants",
+  "country": "India",
+  "state": "West Bengal",
+  "city": "Kolkata",
+  "rera": "WBRERA/A/2022/0456",
+  "gstin": "19AAAAA0000A1Z5",
+  "bank": "",
+  "cur": "INR",
+  "persona": "mixed",
+  "exportApproval": false,
+  "portals": {
+   "magicbricks": true,
+   "99acres": true,
+   "housing": false,
+   "nobroker": false
+  },
+  "notif": {
+   "leads": true,
+   "visits": true,
+   "fus": true,
+   "deals": false,
+   "match": true
+  }
+ },
+ "imports": [],
+ "files": {
+  "prop:RS001": [
+   {
+    "id": "sd1",
+    "name": "Sale_deed_RS001.pdf",
+    "cat": "Sale deed / Title deed",
+    "size": 2516582,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd2",
+    "name": "Property_tax_2025-26.pdf",
+    "cat": "Property tax receipt",
+    "size": 317440,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": true,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd3",
+    "name": "Owner_PAN_SGhosh.jpg",
+    "cat": "Owner ID proof",
+    "size": 184320,
+    "type": "image/jpeg",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd4",
+    "name": "Floor_plan_3BHK.pdf",
+    "cat": "Floor plan / layout",
+    "size": 1153434,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": true,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd5",
+    "name": "Society_NOC.pdf",
+    "cat": "Society NOC / share certificate",
+    "size": 402653,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "2026-10-15",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "prop:RS002": [
+   {
+    "id": "sd6",
+    "name": "Ideal_Grandeur_brochure.pdf",
+    "cat": "Brochure",
+    "size": 3355443,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": true,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd7",
+    "name": "Tax_receipt_RS002.pdf",
+    "cat": "Property tax receipt",
+    "size": 290816,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": true,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "prop:RR001": [
+   {
+    "id": "sd8",
+    "name": "Ownership_proof_KBasu.pdf",
+    "cat": "Ownership proof",
+    "size": 921600,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd9",
+    "name": "Owner_Aadhaar_masked.jpg",
+    "cat": "Owner ID proof",
+    "size": 201728,
+    "type": "image/jpeg",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd10",
+    "name": "CESC_bill_Aug.pdf",
+    "cat": "Electricity / water bill",
+    "size": 131072,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "proj:p1": [
+   {
+    "id": "sd11",
+    "name": "RERA_WBRERA_P_KOL_2024_000123.pdf",
+    "cat": "RERA certificate",
+    "size": 655360,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd13",
+    "name": "Sanctioned_plan.pdf",
+    "cat": "Approved plan",
+    "size": 2097152,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": true,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "pros:c1": [
+   {
+    "id": "sd14",
+    "name": "PAN_Priya_Nair.pdf",
+    "cat": "PAN card",
+    "size": 204800,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd15",
+    "name": "Aadhaar_masked_Priya.pdf",
+    "cat": "Address proof",
+    "size": 262144,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd16",
+    "name": "Photo_Priya.jpg",
+    "cat": "Passport-size photo",
+    "size": 98304,
+    "type": "image/jpeg",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "pros:c2": [
+   {
+    "id": "sd17",
+    "name": "PAN_Sunita.pdf",
+    "cat": "PAN card",
+    "size": 190464,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd18",
+    "name": "Passport_scan_Sunita.pdf",
+    "cat": "Passport",
+    "size": 1310720,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "2026-11-05",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd19",
+    "name": "OCI_card_Sunita.pdf",
+    "cat": "OCI / visa",
+    "size": 843776,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "2026-10-20",
+    "by": "Anil Sharma",
+    "at": "2026-09-18",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "deal:DEAL-0142": [
+   {
+    "id": "sd20",
+    "name": "Token_receipt_0142.pdf",
+    "cat": "Token receipt",
+    "size": 245760,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-02",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd21",
+    "name": "Agreement_to_sell_signed.pdf",
+    "cat": "Agreement to sell",
+    "size": 1887436,
+    "type": "application/pdf",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-10",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd22",
+    "name": "HDFC_sanction_letter.pdf",
+    "cat": "Loan sanction letter",
+    "size": 512000,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-22",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   },
+   {
+    "id": "sd23",
+    "name": "KYC_buyer_Priya.pdf",
+    "cat": "KYC — buyer",
+    "size": 468992,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-02",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "brok:DEAL-0139": [
+   {
+    "id": "sd24",
+    "name": "INV-2026-0139-B.pdf",
+    "cat": "Invoice",
+    "size": 148480,
+    "type": "application/pdf",
+    "st": "Verified",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-10",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "visit:VIS-3370": [
+   {
+    "id": "sd25",
+    "name": "Site_photos_balcony.jpg",
+    "cat": "Site photos",
+    "size": 2202009,
+    "type": "image/jpeg",
+    "st": "Uploaded",
+    "share": false,
+    "valid": "",
+    "by": "Anil Sharma",
+    "at": "2026-09-25",
+    "thumb": null,
+    "url": null,
+    "sample": true
+   }
+  ],
+  "prop:RS003": [],
+  "prop:RS004": [],
+  "prop:RR002": [],
+  "prop:CR001": []
+ },
+ "baseDate": "2026-09-28"
+}

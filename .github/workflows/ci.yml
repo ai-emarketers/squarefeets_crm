@@ -1,0 +1,32 @@
+# GitHub Actions: on every push to main and on pull requests, install, type-check and build both apps
+# so a broken change is caught before it is merged.
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # get the code
+      - uses: actions/checkout@v4
+      # Node 20 toolchain
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      # prisma validate checks schema.prisma; typecheck + build prove the NestJS code compiles
+      - name: API — install, generate client, typecheck, build
+        working-directory: apps/api
+        env: { DATABASE_URL: "postgresql://x:x@localhost:5432/x" }
+        run: |
+          npm install
+          npx prisma validate
+          npm run typecheck
+          npm run build
+      # same checks for the Next.js app
+      - name: Web — install, typecheck, build
+        working-directory: apps/web
+        env: { NEXT_PUBLIC_API_URL: "http://localhost:4000/api" }
+        run: |
+          npm install
+          npm run typecheck
+          npm run build

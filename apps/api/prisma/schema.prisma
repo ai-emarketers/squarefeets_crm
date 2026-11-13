@@ -1,0 +1,277 @@
+// SquareFeets Realty CRM — PostgreSQL schema (Prisma)
+// How to read this file: each `model` is one table. `@id` = primary key, `@default` = value used when none is supplied,
+// `String[]` = text array, `Json` = JSONB column, `@@index` = database index for faster look-ups.
+// Single-organisation deployment. Foreign keys are plain string columns (integrity is enforced by the app, ids are the human codes).
+// Small collections (alerts, logs, import history …) live in the KvStore table. Human-readable codes (RS001, DEAL-0142 …) are the primary keys so
+// the URLs and relations match the prototype one-to-one. Flexible/nested structures are stored as JSONB.
+
+// Tells Prisma to generate the TypeScript client (prisma.lead, prisma.deal ...).
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Database connection: PostgreSQL, URL taken from DATABASE_URL in .env.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// The single company record: profile, role permission matrix, dropdown masters and misc. settings (one row, id 'org').
+model Organization {
+  id        String   @id @default("org")
+  name      String   @default("SquareFeets Realty")
+  rera      String   @default("")
+  gstin     String   @default("")
+  city      String   @default("Kolkata")
+  state     String   @default("West Bengal")
+  country   String   @default("India")
+  bank      String   @default("")
+  persona   String   @default("mixed") // mixed | primary | secondary
+  notif     Json     @default("{}") // notification preferences
+  perms     Json     @default("{}") // role x module permission matrix (see S.perms in prototype)
+  masters   Json     @default("{}") // projectTypes, features, brokerGroups, sizeUnits
+  settings  Json     @default("{}") // anything else from the Settings screen
+  updatedAt DateTime @updatedAt
+}
+
+// Team members who can sign in. `name` is unique and is what the UI stores in `assigned` / `agent` fields.
+model User {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  role         String   @default("Agent") // Owner | Admin | Manager | Agent | Field staff
+  email        String?  @unique
+  phone        String   @default("")
+  corpPhone    String   @default("")
+  altPhone     String   @default("")
+  status       String   @default("Active") // Active | Invited | Disabled
+  seeNumbers   Boolean  @default(false) // per-user override to see full phone numbers
+  passwordHash String? // bcrypt hash; null until a password is set
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Atomic id sequences (key -> last number used) e.g. 'lead' -> 12 so the next lead is l13.
+model Counter {
+  key String @id
+  n   Int    @default(0) // last number issued
+}
+
+// Master list of building/unit amenities that projects and properties tick from.
+model Amenity {
+  id    String @id
+  label String
+  cat   String // group, e.g. Safety / Lifestyle
+}
+
+// A building / development (tower, society, township). Typed columns for common fields, `data` for the rest.
+model Project {
+  id          String   @id // p1, p2 …
+  name        String @default("")
+  dev         String   @default("")
+  type        String   @default("Residential Complex")
+  rera        String   @default("")
+  status      String   @default("uc") // uc | ready
+  cm          String   @default("")
+  cy          String   @default("")
+  complete    String   @default("")
+  size        String   @default("")
+  sizeUnit    String   @default("")
+  towers      String   @default("")
+  units       String   @default("")
+  configs     String[] @default([]) // BHK configurations offered, e.g. ["2 BHK","3 BHK"]
+  sale        Boolean  @default(true)
+  rent        Boolean  @default(true)
+  saleFrom    String   @default("")
+  saleTo      String   @default("")
+  rentFrom    String   @default("")
+  rentTo      String   @default("")
+  place       Json? // map place object (lat/lng, address)
+  addr        Json     @default("{}") // structured address
+  amenities   String[] @default([]) // ids from the Amenity master
+  customAmen  String[] @default([]) // free-text amenities not in the master
+  brochure    String   @default("")
+  layouts     Json     @default("[]") // floor-plan / layout entries
+  charges     Json     @default("[]") // maintenance & other charge lines
+  photos      Json     @default("[]") // photo list (names / urls)
+  data        Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// A listing (flat, house, shop, plot ...). Id like RS001 = Residential Sale. `data` holds address, contacts, extras, features.
+model Property {
+  id        String   @id // RS001, RR001, CR001, LS001 …
+  purpose   String @default("")
+  cat       String @default("")
+  sub       String   @default("")
+  title     String @default("")
+  projectId String? // id of the Project this unit belongs to (plain string, no FK)
+  unit      String   @default("")
+  loc       String   @default("")
+  bhk       Int      @default(0) // bedrooms (0 = not applicable)
+  area      Float    @default(0) // carpet / built-up area
+  furn      String   @default("")
+  priceL    Float? // sale price in lakhs
+  quotedL   Float?
+  rentK     Float? // monthly rent in thousands
+  status    String   @default("Available") // Available | On hold | Sold | Rented/Leased | Draft
+  source    String   @default("Owner") // where the listing came from (Owner, Broker, Portal ...)
+  owner     String   @default("") // owner name shown in lists
+  data      Json     @default("{}") // addr, place, src, owner/broker/portal contact blocks, extras, features, tenants, charges …
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([purpose, status])
+}
+
+// An unqualified enquiry (portal, walk-in, referral). Becomes a Prospect when converted.
+model Lead {
+  id        String   @id // l1, l2 …
+  name      String @default("") // full name
+  phone     String   @default("")
+  source    String   @default("Direct Reference") // channel the lead came from
+  intent    String   @default("buy") // buy | rent
+  stage     String   @default("Lead") // Lead | Qualified | Not qualified | Converted
+  sub       String   @default("")
+  budget    String   @default("") // budget text as typed
+  want      String   @default("") // what they want, free text
+  assigned  String   @default("") // team member name
+  tags      String[] @default([]) // labels such as Hot / NRI
+  act       Json     @default("[]") // activity log
+  links     Json     @default("[]")
+  basic     Json     @default("{}") // locText, min, max, bhk …
+  data      Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A qualified customer/contact (buyer, tenant, owner, investor ...).
+model Prospect {
+  id        String   @id // c1, c2 …
+  name      String @default("")
+  type      String   @default("Buyer") // Buyer | Tenant | Owner | Landlord | Investor …
+  nri       Boolean  @default(false) // non-resident Indian flag
+  city      String   @default("")
+  source    String   @default("")
+  assigned  String   @default("")
+  phone     String   @default("")
+  email     String   @default("")
+  lang      String   @default("English") // preferred language
+  notes     String   @default("")
+  waOk      Boolean  @default(true) // OK to contact on WhatsApp
+  data      Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// What a prospect is looking for (purpose, type, localities, budget, BHK). Drives smart matching.
+model Requirement {
+  id        String   @id // REQ-2031
+  cid       String @default("") // prospect id this requirement belongs to
+  purpose   String   @default("sale")
+  type      String   @default("Apartment / Flat")
+  locs      String[] @default([]) // wanted localities
+  min       Float? // budget minimum (lakhs for sale, thousands for rent)
+  max       Float? // budget maximum
+  bhk       Int      @default(0)
+  status    String   @default("Active") // Active | On hold | Fulfilled | Closed
+  notes     String   @default("")
+  data      Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A scheduled property visit for a prospect, with an activity log.
+model Visit {
+  id        String   @id // VIS-3392
+  cid       String @default("") // prospect id
+  prop      String @default("") // property id
+  date      String @default("") // yyyy-mm-dd (kept as text, like the UI)
+  time      String @default("") // HH:mm
+  dur       Int      @default(45) // duration in minutes
+  status    String   @default("Scheduled") // Scheduled | Confirmed | Completed | Cancelled
+  agent     String   @default("")
+  notes     String   @default("")
+  log       Json     @default("[]") // visit feedback / activity entries
+  data      Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([cid])
+}
+
+// A to-do / reminder (call, WhatsApp, email ...) shown on the dashboard and calendar.
+model FollowUp {
+  id        String   @id // f1 …
+  who       String @default("") // prospect / lead the task is about
+  kind      String   @default("Call") // Call | WhatsApp | Email | Visit ...
+  note      String   @default("")
+  due       String   @default("upcoming") // overdue | today | upcoming
+  when      String   @default("") // display text of the due date/time
+  done      Boolean  @default(false)
+  data      Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A negotiation that runs from offer to token, agreement and registration (sale) or lease (rent).
+model Deal {
+  id        String   @id // DEAL-0142
+  cid       String @default("") // prospect id
+  prop      String @default("") // property id
+  kind      String   @default("sale") // sale | rent
+  stage     String   @default("negotiation") // negotiation | token | agreement | registration | closed | lost
+  ask       Float? // asking price / rent
+  bid       Float? // latest offer
+  close     Float? // final closing value
+  token     Json     @default("{}") // token money block {amt, date, ...}
+  agr       Json     @default("{}") // agreement block
+  reg       Json     @default("{}") // registration block
+  bType     String   @default("%") // brokerage type: % or fixed
+  bBuyer    Float    @default(1) // brokerage charged to buyer/tenant
+  bOwner    Float    @default(1) // brokerage charged to owner/landlord
+  lostReason String  @default("")
+  expected  String   @default("")
+  stageSince String  @default("") // date the deal entered its current stage
+  upd       String   @default("") // last update date
+  openedBy  String   @default("")
+  closedBy  String   @default("")
+  data      Json     @default("{}") // offers, loan, tasks, parties, timeline, docs, lease fields, notes …
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Commission record for a deal: amount due, payments received, discounts/splits. Keyed by the deal id (one per deal).
+model Brokerage {
+  deal      String   @id // deal id (DEAL-0142)
+  due       String   @default("") // brokerage amount due
+  pay       Json     @default("[]") // payments received [{date, amt, mode}]
+  data      Json     @default("{}") // discounts, splits, waivers, deductions, invoice numbers
+  updatedAt DateTime @updatedAt
+}
+
+// Metadata for an uploaded document (the bytes live on disk under UPLOAD_DIR, see `path`). `scope` says what it belongs to, e.g. prop:RS001.
+model FileRecord {
+  id        String   @id @default(cuid())
+  scope     String @default("") // owner of the document: <type>:<id> e.g. prop:RS001, deal:DEAL-0142
+  name      String @default("")
+  cat       String   @default("Other") // document category (Sale deed, KYC, Photo ...)
+  size      Int      @default(0)
+  mime      String   @default("")
+  st        String   @default("Uploaded") // verification status
+  valid     String   @default("") // expiry date yyyy-mm-dd
+  shared    Boolean  @default(false) // visible to the customer when true
+  path      String   @default("") // relative path inside UPLOAD_DIR
+  data      Json     @default("{}") // extra fields kept as flexible JSONB
+  createdAt DateTime @default(now())
+
+  @@index([scope])
+}
+
+// Small app-owned collections persisted as JSON (alerts, viewLog, exportLog, exportReq, imports, mreq, roles ...).
+model KvStore {
+  key       String   @id // collection name, e.g. alerts
+  value     Json     @default("[]") // the whole collection as JSON
+  updatedAt DateTime @updatedAt
+}

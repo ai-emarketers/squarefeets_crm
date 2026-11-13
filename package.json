@@ -1,0 +1,22 @@
+{
+  "name": "squarefeets-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SquareFeets Realty CRM \u2014 Next.js + NestJS + PostgreSQL",
+  "scripts": {
+    "install:all": "npm --prefix apps/api install && npm --prefix apps/web install",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:migrate": "npm --prefix apps/api run prisma:migrate",
+    "db:seed": "npm --prefix apps/api run prisma:seed",
+    "dev:api": "npm --prefix apps/api run start:dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/api run build && npm --prefix apps/web run build",
+    "typecheck": "npm --prefix apps/api run typecheck && npm --prefix apps/web run typecheck",
+    "db:push": "npm --prefix apps/api run prisma:push",
+    "db:studio": "npm --prefix apps/api run prisma:studio"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,34 @@
+# Files and folders Git should NOT track.
+# dependencies: installed packages (restore with npm install)
+node_modules/
+.pnp
+.pnp.js
+
+# builds: generated output
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# env & secrets: real .env files stay local; the .env.example templates are kept
+.env
+.env.*
+!.env.example
+
+# uploads / local data: user-uploaded documents and local database files
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+pgdata/
+*.log
+npm-debug.log*
+
+# OS / editor: machine-specific files (the shared VS Code settings are kept)
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

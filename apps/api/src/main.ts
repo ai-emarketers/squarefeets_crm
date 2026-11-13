@@ -1,0 +1,22 @@
+// API entry point: creates the Nest app, configures it and starts listening.
+import 'reflect-metadata'; // required by Nest's decorators / dependency injection
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Every route lives under /api (e.g. /api/auth/login).
+  app.setGlobalPrefix('api');
+  // Allow the Next.js site (WEB_ORIGIN, comma separated) to call the API from the browser.
+  app.enableCors({ origin: (process.env.WEB_ORIGIN || 'http://localhost:3000').split(','), credentials: true });
+  // Validate DTO classes (class-validator); whitelist is off because records carry free-form fields.
+  app.useGlobalPipes(new ValidationPipe({ whitelist: false, transform: true }));
+  // Records (deals with offers, documents metadata …) can be large JSON bodies.
+  app.useBodyParser('json', { limit: '25mb' });
+  const port = Number(process.env.API_PORT || 4000);
+  await app.listen(port);
+  console.log(`SquareFeets CRM API running on http://localhost:${port}/api`);
+}
+bootstrap();

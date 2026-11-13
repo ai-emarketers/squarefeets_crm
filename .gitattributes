@@ -1,0 +1,7 @@
+# Git line-ending and file-type rules.
+# Normalise text files to LF so Windows and Linux contributors don't create noisy diffs.
+* text=auto eol=lf
+# never try to diff/merge these
+*.png binary
+*.jpg binary
+*.pdf binary

@@ -1,0 +1,23 @@
+# Local PostgreSQL database for development. Start with `npm run db:up`, stop with `npm run db:down`.
+# These credentials are for local use only — use your own managed database and secrets in production.
+services:
+  db:
+    image: postgres:16-alpine          # small PostgreSQL 16 image
+    container_name: squarefeets_db
+    restart: unless-stopped            # comes back up after a reboot
+    environment:
+      POSTGRES_USER: squarefeets
+      POSTGRES_PASSWORD: squarefeets
+      POSTGRES_DB: squarefeets_crm
+    ports:
+      - "5432:5432"                    # host port : container port
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # named volume so data survives container restarts
+    healthcheck:                       # lets `docker compose up --wait` know when the DB is ready
+      test: ["CMD-SHELL", "pg_isready -U squarefeets -d squarefeets_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+# declares the named volume used above
+volumes:
+  pgdata:
