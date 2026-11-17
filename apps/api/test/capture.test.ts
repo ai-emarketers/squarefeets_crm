@@ -57,6 +57,22 @@ assert.strictEqual(normalizeCapture({ items: [{ type: 'need', deal: 'rent', cate
 const bad = normalizeCapture({ phone: '12345', items: [] });
 assert.strictEqual(bad.phone, ''); assert.ok(bad.warnings.some((w) => /valid mobile/.test(w)));
 
+// ---- explicit intent (what the sender wants) decides buy/rent and has-property / wants-property
+const ints = normalizeCapture({ contactName: 'Sanjeev Shroff', items: [
+  { intent: 'wants_to_rent_out', evidence: 'RENT - fully furnished office space 673 sq ft', category: 'Commercial', areaValue: 673, areaUnit: 'sqft' },
+  { intent: 'wants_to_sell', evidence: 'SALE - Ecospace Residencia 3BHK', category: 'Residential', bhk: 3, areaValue: 1476, areaUnit: 'sqft' },
+  { intent: 'wants_to_buy', evidence: 'I am looking to purchase any preleased commercial space', category: 'Commercial', budgetMin: 5000000, budgetMax: 30000000 },
+  { intent: 'Wants to rent', category: 'Commercial', budgetMax: 45000 },
+] });
+assert.deepStrictEqual(ints.items.map((i) => [i.intent, i.isProperty]), [['rent', true], ['buy', true], ['buy', false], ['rent', false]]);
+assert.strictEqual(ints.items[0].evidence, 'RENT - fully furnished office space 673 sq ft');
+assert.deepStrictEqual([ints.items[2].min, ints.items[2].max, ints.items[3].max], ['50', '300', '45']);
+// the intent wins over a conflicting older type/deal pair
+assert.strictEqual(normalizeCapture({ items: [{ intent: 'wants_to_sell', type: 'need', deal: 'rent' }] }).items[0].isProperty, true);
+// the prompt carries the rules and the examples the model needs
+import { PROMPT } from '../src/capture/capture.parse';
+assert.ok(PROMPT.includes('wants_to_rent_out') && PROMPT.includes('A listing that starts with the word RENT') && PROMPT.includes('EXAMPLES'));
+
 // ---- when the stronger model is used
 assert.strictEqual(needsFallback(null), true);
 assert.strictEqual(needsFallback({ confidence: 0.9 } as any), true);          // no items array
