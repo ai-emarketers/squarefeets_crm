@@ -10,7 +10,14 @@ import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/auth.decorators';
 import { SendMatchesMailDto } from './mail.dto';
 import { fmtLakh, fmtRentK, matchesHtml, matchesText, MailProperty } from './mail.template';
-import { sendSmtp } from './smtp';
+import { MailAttachment, sendSmtp } from './smtp';
+
+export { MailAttachment };
+/** One outgoing email, independent of the provider (Resend, SMTP or Brevo). */
+export interface OutMail {
+  to: string; toName: string; fromName: string; fromEmail: string; replyTo: string; replyToName: string;
+  subject: string; html: string; text: string; attachments?: MailAttachment[];
+}
 
 // A loose email check (the real test is whether Brevo accepts it).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,10 +69,31 @@ export class MailService {
     };
     const subject = (b.subject || '').trim() || `${properties.length} ${properties.length === 1 ? 'home' : 'homes'} that match what you asked for`;
     const html = matchesHtml(data); const text = matchesText(data); const fromName = u.name + ' · ' + orgName;
+    await this.deliver({ to, toName: pros.name, fromName, fromEmail, replyTo: brokerEmail, replyToName: u.name, subject, html, text });
+    this.sent.set(key, (this.sent.get(key) || 0) + 1);
+    await this.audit.log(u.name, 'Emailed matches', pros.name, { prospect: pros.id, properties: properties.map((p) => p.id) });
+    return { ok: true, sent: properties.length, to: to.replace(/^(.).*(@.*)$/, '$1•••$2') };
+  }
+
+  /** Today's send count check for one user: throws 429 once the daily limit is reached. */
+  checkLimit(u: AuthUser) {
+    const key = u.id + ':' + new Date().toISOString().slice(0, 10);
+    if ((this.sent.get(key) || 0) >= PER_USER_DAILY) throw new HttpException('Daily email limit reached for your account.', HttpStatus.TOO_MANY_REQUESTS);
+  }
+  /** Count one sent email against the user's daily limit. */
+  bump(u: AuthUser) { const key = u.id + ':' + new Date().toISOString().slice(0, 10); this.sent.set(key, (this.sent.get(key) || 0) + 1); }
+  /** Sender address used when the caller has none of its own. */
+  defaultFrom() { return process.env.MAIL_FROM_EMAIL || process.env.SMTP_USER || 'onboarding@resend.dev'; }
+
+  /** Hand one email (with optional attachments) to whichever provider is configured: Resend, SMTP or Brevo. Throws readable errors. */
+  async deliver(m: OutMail) {
+    if (!this.configured()) throw new ServiceUnavailableException('Email is not set up yet. Ask the admin to add the email settings.');
+    const atts = m.attachments || [];
     if (this.resendOn()) {
       const res = await (globalThis as any).fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'content-type': 'application/json' },
-        body: JSON.stringify({ from: `${fromName.replace(/[<>"]/g, '')} <${fromEmail}>`, to: [to], reply_to: brokerEmail, subject, html, text }),
+        body: JSON.stringify({ from: `${m.fromName.replace(/[<>"]/g, '')} <${m.fromEmail}>`, to: [m.to], reply_to: m.replyTo, subject: m.subject, html: m.html, text: m.text,
+          ...(atts.length ? { attachments: atts.map((a) => ({ filename: a.name, content: a.content.toString('base64') })) } : {}) }),
       });
       if (!res.ok) {
         const t = await res.text().catch(() => ''); console.error('[mail] Resend refused', res.status, t.slice(0, 300));
@@ -76,7 +104,7 @@ export class MailService {
       // SMTP (Gmail …): the From address must be the logged-in mailbox (or an alias Gmail allows).
       try {
         await sendSmtp({ host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT) || 465, user: process.env.SMTP_USER!, pass: process.env.SMTP_PASS!,
-          from: fromEmail, fromName, to, toName: pros.name, replyTo: brokerEmail, replyToName: u.name, subject, html, text });
+          from: m.fromEmail, fromName: m.fromName, to: m.to, toName: m.toName, replyTo: m.replyTo, replyToName: m.replyToName, subject: m.subject, html: m.html, text: m.text, attachments: atts });
       } catch (e: any) {
         console.error('[mail] SMTP failed:', e?.message);
         const msg = String(e?.message || '');
@@ -87,15 +115,13 @@ export class MailService {
     } else {
       const res = await (globalThis as any).fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST', headers: { 'api-key': process.env.BREVO_API_KEY!, 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({ sender: { name: fromName, email: fromEmail }, replyTo: { email: brokerEmail, name: u.name }, to: [{ email: to, name: pros.name }], subject, htmlContent: html, textContent: text }),
+        body: JSON.stringify({ sender: { name: m.fromName, email: m.fromEmail }, replyTo: { email: m.replyTo, name: m.replyToName }, to: [{ email: m.to, name: m.toName }], subject: m.subject, htmlContent: m.html, textContent: m.text,
+          ...(atts.length ? { attachment: atts.map((a) => ({ name: a.name, content: a.content.toString('base64') })) } : {}) }),
       });
       if (!res.ok) {
         const t = await res.text().catch(() => ''); console.error('[mail] Brevo refused', res.status, t.slice(0, 300));
-        throw new BadRequestException(res.status === 401 ? 'The email service rejected the API key.' : 'The email service could not send this message. Check the sender is verified in Brevo.');
+        throw new BadRequestException(res.status === 401 ? 'The email service rejected the API key.' : 'The email service could not send this message. Check the sender is verified in Brevo' + (atts.length ? ' and that the attachments are not too large.' : '.'));
       }
     }
-    this.sent.set(key, (this.sent.get(key) || 0) + 1);
-    await this.audit.log(u.name, 'Emailed matches', pros.name, { prospect: pros.id, properties: properties.map((p) => p.id) });
-    return { ok: true, sent: properties.length, to: to.replace(/^(.).*(@.*)$/, '$1•••$2') };
   }
 }

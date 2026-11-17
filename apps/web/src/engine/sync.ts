@@ -122,6 +122,8 @@ export function createAdapter(onLogout: () => void) {
   return {
     // engine -> adapter: receive the toast/render callbacks
     attach(h: Hooks) { hooks = h; },
+    /** Send pending edits now and wait until the server has them (used before actions that read the saved record, e.g. publishing). */
+    async flushNow(S: EngineState) { await flush(S); while (busy || dirty) await new Promise((r) => setTimeout(r, 100)); },
     // direct API call for actions that are not part of the /sync diff (set / change password)
     api: (path: string, opts?: Rec) => api(path, opts),
     /** Called by the engine after BOOT is applied; the baseline is taken on the first save (after normalisation). */
@@ -170,7 +172,7 @@ export function createAdapter(onLogout: () => void) {
       let n = 0;
       for (const scope of Object.keys(S.files || {})) for (const f of S.files[scope]) {
         if (n >= 24) return;
-        if (f.hasBlob && /^image\//.test(f.type || '') && !f.thumb && (f.size || 0) < 3 * 1048576) { n++; await this.openUrl(f, () => hooks.render?.()); }
+        if (f.hasBlob && (/^image\//.test(f.type || '') || /\.(jpe?g|jfif|png|webp|gif|bmp|avif)$/i.test(f.name || '')) && !f.thumb && !f.url) { n++; await this.openUrl(f, () => hooks.render?.()); }
       }
     },
     // Sign out: forget the token and go to /login.
