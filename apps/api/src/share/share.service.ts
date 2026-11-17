@@ -18,6 +18,8 @@ import { ShareMatchesDto } from './share.dto';
 import { linkDays, signToken } from './share.token';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_GALLERY = 11;                          // extra photos per property in the PDF gallery
+const GALLERY_BUDGET = 2.5 * 1024 * 1024;        // total gallery photo bytes per PDF (keeps the email small)
 const MAX_DOCS = 30;                              // documents per send
 const MAX_PHOTO = 3 * 1024 * 1024;                // biggest photo drawn into the PDF
 const maxAttachBytes = () => Math.max(1, Number(process.env.MAIL_MAX_ATTACH_MB) || 4) * 1024 * 1024; // total attachment size per email (Brevo's limit is the lowest)
@@ -68,13 +70,21 @@ export class ShareService {
     const matches = new Map<string, any>(req ? matchesFor(req, fl).map((m: any) => [m.p.id, m]) : []);
     // documents + photos
     const files: any[] = await db.fileRecord.findMany({ where: { scope: { in: rows.map((r) => 'prop:' + r.id) }, shared: true, NOT: { path: '' } }, orderBy: { createdAt: 'asc' } });
-    const photos = new Map<string, Buffer>(); const docs: ShareDoc[] = []; let skipped = 0;
+    const photos = new Map<string, Buffer>(), gallery = new Map<string, Buffer[]>(); let galleryBytes = 0; const docs: ShareDoc[] = []; let skipped = 0;
     const want = b.documentIds ? new Set(b.documentIds) : null;
     for (const f of files) {
       const abs = path.resolve(uploadRoot(), f.path); if (!abs.startsWith(uploadRoot())) continue; // never read outside the upload folder
       const pid = String(f.scope).slice(5);
-      if (f.cat === 'Photos' && /jpe?g/i.test(f.mime) && !photos.has(pid)) { try { const st = await fs.stat(abs); if (st.size <= MAX_PHOTO) photos.set(pid, await fs.readFile(abs)); } catch { /* photo missing: skip it */ } continue; }
-      if (f.cat === 'Photos' && /jpe?g/i.test(f.mime)) continue;
+      if (f.cat === 'Photos' && /jpe?g/i.test(f.mime)) { // first JPEG = cover, the rest = gallery pages (kept within a size budget)
+        try {
+          const st = await fs.stat(abs);
+          if (st.size <= MAX_PHOTO && (!photos.has(pid) || (gallery.get(pid) || []).length < MAX_GALLERY && galleryBytes + st.size <= GALLERY_BUDGET)) {
+            const buf = await fs.readFile(abs);
+            if (!photos.has(pid)) photos.set(pid, buf); else { gallery.set(pid, [...(gallery.get(pid) || []), buf]); galleryBytes += st.size; }
+          }
+        } catch { /* photo missing: skip it */ }
+        continue;
+      }
       if (want && !want.has(f.id)) continue;
       try { const st = await fs.stat(abs); if (!st.isFile()) throw new Error('not a file'); if (docs.length < MAX_DOCS) docs.push({ id: f.id, propId: pid, name: f.name, cat: f.cat, size: st.size, mime: f.mime, abs }); }
       catch { skipped++; } // the record exists but the file is gone
@@ -98,7 +108,7 @@ export class ShareService {
         id: r.id, title: r.title, loc: r.loc, unit: r.unit || '', project: proj.name || '', developer: proj.dev || '', price,
         bhk: residential ? r.bhk + ' BHK' : r.cat, summary: [residential ? r.bhk + ' BHK' : r.sub || r.cat, size ? num(size) + ' sq ft' : '', r.furn].filter(Boolean).join(' · '),
         facts, score: m ? m.score : undefined, reasons: m ? this.reasons(m.why, r, req, price, size) : [],
-        amenities: [...new Set(amenities)], photo: photos.get(r.id),
+        amenities: [...new Set(amenities)], photo: photos.get(r.id), gallery: gallery.get(r.id),
         docs: docs.filter((d) => d.propId === r.id).map((d) => d.name + '  ·  ' + d.cat),
       };
     });

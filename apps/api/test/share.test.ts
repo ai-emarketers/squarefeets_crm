@@ -88,6 +88,12 @@ const pdfBase = { org: { name: 'Org', rera: '', city: '' }, broker: { name: 'A',
     const s = b.toString('latin1'); assert.equal(pageCount(b), 3); assert.equal((s.match(/\/Subtype \/Image/g) || []).length, 1, 'the one valid photo is stored once, however often it is drawn'); assert.ok(s.includes('/DCTDecode'));
     if (process.env.WRITE_SAMPLE) fs.writeFileSync(process.env.WRITE_SAMPLE, b);
   });
+  await t('no photo at all: no image is drawn; extra photos get gallery pages (6 per page)', () => {
+    const none = buildMatchesPdf({ ...pdfBase, properties: [pdfProp('a')] });
+    assert.equal((none.toString('latin1').match(/\/Subtype \/Image/g) || []).length, 0); const base = pageCount(none);
+    const g = buildMatchesPdf({ ...pdfBase, properties: [{ ...pdfProp('a'), photo: JPG, gallery: [JPG, JPG, JPG, JPG, JPG, JPG, JPG] }] });
+    assert.equal(pageCount(g), base + 2, '7 gallery photos = 2 gallery pages'); assert.ok(g.toString('latin1').includes('/DCTDecode'));
+  });
   await t('many properties spill onto extra summary pages', () => {
     const b = buildMatchesPdf({ ...pdfBase, matched: false, properties: Array.from({ length: 10 }, (_, i) => pdfProp('P' + i)) });
     assert.ok(pageCount(b) > 11, 'summary should need more than one page for 10 properties: ' + pageCount(b));

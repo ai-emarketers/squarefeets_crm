@@ -1,6 +1,6 @@
 // The "matched properties" PDF: a summary page (what the client asked for + every match) followed by one page per property
 // (photo, facts, why it matches, amenities, documents that come with the message). Pure layout: all values are passed in.
-import { Page, Pdf } from './pdf';
+import { Page, Pdf, jpegInfo } from './pdf';
 
 /** One matched property, already formatted for display. */
 export interface PdfProperty {
@@ -13,7 +13,8 @@ export interface PdfProperty {
   reasons: { ok: boolean; text: string }[]; // why it matches (or not)
   amenities: string[];
   docs: string[];                      // names of the documents sent with this property
-  photo?: Buffer;                      // JPEG, when the property has a shareable photo
+  photo?: Buffer;                      // JPEG cover, when the property has a shareable photo (none: no picture is drawn)
+  gallery?: Buffer[];                  // further JPEG photos; they get their own gallery page(s)
 }
 /** Everything the PDF shows. */
 export interface MatchesPdfData {
@@ -128,6 +129,16 @@ export function buildMatchesPdf(d: MatchesPdfData): Buffer {
       const room = Math.max(1, Math.floor((y - 84) / 30)), shown = pr.docs.length > room ? room - 1 : pr.docs.length;
       pr.docs.slice(0, shown).forEach((nm, i) => { const top = y - 10 - i * 30; p.rect(M, top - 24, p.w - 2 * M, 24, { fill: BG, r: 6 }); p.text(M + 12, top - 16, clip(p, nm, p.w - 2 * M - 24, 'R', 9.5), { size: 9.5 }); });
       if (pr.docs.length > shown) p.text(M, y - 10 - shown * 30 - 12, `+ ${pr.docs.length - shown} more attached`, { size: 9.5, color: MUT });
+    }
+  }
+  // ---- photo gallery pages (only for properties that have more photos)
+  const GW = (595.28 - 2 * M - 14) / 2, GH = 168;
+  for (const pr of d.properties) {
+    const g = (pr.gallery || []).filter((x) => jpegInfo(x));
+    for (let n = 0; n < g.length; n += 6) {
+      p = pdf.addPage(); header(p, d, 'Photos');
+      p.text(M, p.h - 108, clip(p, pr.title, p.w - 2 * M, 'B', 16), { font: 'B', size: 16 });
+      g.slice(n, n + 6).forEach((img, i) => p.jpeg(img, M + (i % 2) * (GW + 14), p.h - 140 - GH - Math.floor(i / 2) * (GH + 14), GW, GH));
     }
   }
   pdf.pages.forEach((pg, i) => footer(pg, d, i + 1, pdf.pages.length));
