@@ -18,7 +18,9 @@
     "test:services": "ts-node --transpile-only test/services.test.ts",
     "test:capture": "ts-node --transpile-only test/capture.test.ts",
     "test:brochure": "ts-node --transpile-only test/brochure.test.ts",
-    "capture:eval": "ts-node --transpile-only scripts/capture-eval.ts"
+    "capture:eval": "ts-node --transpile-only scripts/capture-eval.ts",
+    "test:share": "ts-node --transpile-only test/share.test.ts && ts-node --transpile-only test/share.http.test.ts",
+    "test:share:http": "ts-node --transpile-only test/share.http.test.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"
