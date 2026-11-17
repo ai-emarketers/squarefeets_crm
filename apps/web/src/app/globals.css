@@ -529,3 +529,10 @@ textarea{min-height:56px;padding:6px 8px}
 @media(max-width:560px){.docbar>.fld{flex-direction:column;align-items:stretch;gap:2px}}
 [data-drop] .badge{font-size:11px;padding:2px 8px;min-height:0;height:auto}
 [data-drop] .chips{gap:4px!important}
+.docrow{flex-wrap:nowrap;gap:8px}
+.docrow .fld{width:170px;flex:none}
+.docrow .inp.sel{width:100%;min-width:0}
+.docrow .inp.sel select{max-width:none}
+.docrow h2{white-space:nowrap}
+@media(max-width:560px){.docrow{flex-wrap:wrap}.docrow .grow{display:none}.docrow>h2{flex:1 1 auto}.docrow .fld{flex:1 1 140px;width:auto}}
+[data-drop] button.badge{font-size:11px!important;padding:2px 8px;line-height:1.3}
