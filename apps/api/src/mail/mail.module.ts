@@ -4,5 +4,5 @@ import { MailController } from './mail.controller';
 import { MailService } from './mail.service';
 
 // MailModule: Nest module — wires this feature's controller and service together.
-@Module({ controllers: [MailController], providers: [MailService] })
+@Module({ controllers: [MailController], providers: [MailService], exports: [MailService] })
 export class MailModule {}
