@@ -318,6 +318,8 @@ textarea{border:1px solid var(--field);border-radius:var(--rs);padding:12px;back
  .tbl td:first-child{display:table-cell}
  .tbl td::before,.tbl td[data-l]::before{display:none}
  .tbl td:first-child{min-width:180px}
+ .tbl td:not(:first-child){white-space:nowrap}
+ .tbl td.wrap{white-space:normal}
  .tbl td:empty{display:table-cell}
  .tbl td[colspan]{display:table-cell}
  .tbl tr:last-child td{border-bottom:none}
@@ -346,7 +348,7 @@ textarea{border:1px solid var(--field);border-radius:var(--rs);padding:12px;back
 
 /* ================= laptop ≥1100 ================= */
 @media (min-width:1100px){
- :root{--pad:20px;--ctl:38px;--ctl-sm:34px;--bar:64px}
+ :root{--pad:16px;--gap:12px;--ctl:38px;--ctl-sm:34px;--bar:64px}
  body{font-size:14px}
  .sub{font-size:14px}
  .app{display:grid;grid-template-columns:248px minmax(0,1fr)}
@@ -424,3 +426,25 @@ textarea{border:1px solid var(--field);border-radius:var(--rs);padding:12px;back
 .lg-err{background:var(--err-soft);color:var(--err);border:1px solid var(--err);border-radius:10px;padding:10px 14px;font-size:14px}
 .lg-help{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted);text-align:center}
 .lg-foot{margin:0;font-size:12.5px;color:var(--muted);text-align:center}
+
+/* flush cards (tables edge to edge) still need padding around their own heading / note text */
+.card.flush>h2{padding:var(--pad) var(--pad) 6px}
+.card.flush>.head{padding:var(--pad) var(--pad) 6px}
+.card.flush>.sub,.card.flush>.note{padding:6px var(--pad)}
+.card.flush>.scroll-x+.sub{padding-bottom:var(--pad)}
+
+.ph{margin-left:8px;white-space:nowrap;display:inline-block}
+.nwrow{display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.head>.search{flex:1 1 100%!important;max-width:none!important}
+@media (min-width:768px){
+ .nwrow{flex-wrap:nowrap}
+ .head>.search{flex:1 1 150px!important;max-width:260px!important}
+}
+
+.tbl td .ph,.card .ph{background:none!important;border:0!important;padding:0!important;border-radius:0!important;height:auto!important}
+
+.tabs+h2,.tabs+.sub,.tabs+.fld,.tabs+.row,.tabs+div:not(.mb){margin-top:12px}
+@media (min-width:768px){
+ .li.fu{flex-wrap:nowrap}
+ .li.fu>.grow{min-width:0}
+}
