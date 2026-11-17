@@ -22,6 +22,7 @@ jobs:
           npx prisma validate
           npm run typecheck
           npm run build
+          npm run test:share
       # same checks for the Next.js app
       - name: Web — install, typecheck, build
         working-directory: apps/web

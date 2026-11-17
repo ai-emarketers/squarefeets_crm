@@ -86,7 +86,7 @@ export interface EngineAdapter {
   /** Sign out. */
   logout?: () => void;
   /** Direct API call (used by the Team and My account screens). */
-  api?: (path: string, opts?: { method?: string; body?: any }) => Promise<any>;
+  api?: (path: string, opts?: { method?: string; body?: any; form?: FormData }) => Promise<any>;
 }
 
 /** A click action: receives the clicked element (and the event) and may change state, then re-render. */
