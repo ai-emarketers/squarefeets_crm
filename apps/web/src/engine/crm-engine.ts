@@ -718,22 +718,42 @@ const PIN_TABLE = { 700091: ['Kolkata', 'West Bengal'], 700156: ['Kolkata', 'Wes
 const chargeAmt = (c, area) => Math.round((Number(String(c.rate).replace(/[^0-9.]/g, '')) || 0) * (Number(String(area).replace(/[^0-9.]/g, '')) || 0));
 // Is a dated charge already in effect?
 const chargeLive = (c) => !c.from || c.from <= iso(today);
-// Stand-in for AI brochure extraction: returns plausible project fields.
-function mockExtract(d) {
-  // Display name for a project: typed name, else derived from the brochure file name.
-  const nm = (d.name || '').trim() || String(d.brochure || '').replace(/\.\w+$/, '').replace(/[_-]+/g, ' ').replace(/brochure/i, '').trim() || 'Sample Heights';
-  return { name: nm, dev: 'Sample Developers Pvt Ltd', type: 'Residential Complex', rera: 'WBRERA/P/KOL/2026/000999', status: 'uc', cm: 'Dec', cy: '2028', size: '12', sizeUnit: 'acres', towers: '5', units: '420', configs: ['2 BHK', '3 BHK', '4 BHK'], saleFrom: '72 L', saleTo: '1.6 Cr', amenities: ['clubhouse', 'swimming_pool', 'gym', 'security'], layouts: [{ cfg: '2 BHK', name: 'Type A', area: '1,010', baths: '2', units: '140' }, { cfg: '3 BHK', name: 'Type B', area: '1,420', baths: '3', units: '200' }, { cfg: '4 BHK', name: 'Type C', area: '2,050', baths: '4', units: '80' }] };
+/* ---- Fill the project form from a brochure (API: POST /api/capture/brochure) ---- */
+// The PDF chosen in this session (the server reads it; saved brochures are read by document id instead).
+let BROCHURE_FILE: File | null = null;
+// Fit the server's fields to this CRM's lists (project types, size units, configurations) before they are shown for review.
+function brochureFields(f: Rec, d: Rec) {
+  const out: Rec = {}; const put = (k: string, v: any) => { if (v !== undefined && v !== '' && !(Array.isArray(v) && !v.length)) out[k] = v; };
+  const type = (S.masters.projectTypes || []).find((t) => t.toLowerCase() === String(f.type || '').toLowerCase());
+  ['name', 'dev', 'rera', 'status', 'cm', 'cy', 'size', 'towers', 'units', 'saleFrom', 'saleTo', 'amenities', 'customAmen', 'layouts', 'addr', 'web'].forEach((k) => put(k, f[k]));
+  put('type', type); put('sizeUnit', (S.masters.sizeUnits || []).includes(f.sizeUnit) ? f.sizeUnit : '');
+  const opts = cfgFor(type || d.type); const cf = (f.configs || []).filter((c) => opts.includes(c)); put('configs', cf.length ? cf : f.configs);
+  return out;
+}
+// Ask the server to read the brochure: the PDF picked just now, or the brochure already saved on this project.
+async function readBrochure() {
+  const d = S.d.project; const saved = filesOf('proj:__draft').find((x) => x.cat === 'Brochure' && x.hasBlob && /\.pdf$/i.test(x.name));
+  if (!BROCHURE_FILE && !saved) { toast('Upload the brochure as a PDF first.'); return; }
+  if (BROCHURE_FILE && !/\.pdf$/i.test(BROCHURE_FILE.name) && !saved) { toast('Only PDF brochures can be read. Upload the brochure as a PDF.'); return; }
+  d.aiBusy = true; render();
+  try {
+    const form = new FormData(); if (BROCHURE_FILE && /\.pdf$/i.test(BROCHURE_FILE.name)) form.append('file', BROCHURE_FILE); else form.append('fileId', saved.id);
+    const r = await ADAPTER.api!('/capture/brochure', { form });
+    const data = brochureFields(r.fields || {}, d);
+    if (Object.keys(data).length) d.ai = { data, pick: {}, model: r.model, warnings: r.warnings || [] }; else toast('Nothing could be read from that brochure.' + ((r.warnings || [])[0] ? ' ' + r.warnings[0] : ''));
+  } catch (e: any) { toast(e?.message || 'Could not read the brochure'); }
+  d.aiBusy = false; render();
 }
 // Field labels for the AI-extraction review card.
-const AI_LABEL = { name: 'Project name', dev: 'Developer', type: 'Project type', rera: 'RERA ID', status: 'Status', cm: 'Expected month', cy: 'Expected year', size: 'Project size', sizeUnit: 'Size unit', towers: 'Towers', units: 'Total units', configs: 'Configurations', saleFrom: 'Sale price from', saleTo: 'Sale price to', amenities: 'Amenities', layouts: 'Layouts' };
+const AI_LABEL = { name: 'Project name', dev: 'Developer', type: 'Project type', rera: 'RERA ID', status: 'Status', cm: 'Expected month', cy: 'Expected year', size: 'Project size', sizeUnit: 'Size unit', towers: 'Towers', units: 'Total units', configs: 'Configurations', saleFrom: 'Sale price from', saleTo: 'Sale price to', amenities: 'Amenities', customAmen: 'Other amenities', layouts: 'Layouts', addr: 'Address', web: 'Website text' };
 // Card showing AI-extracted project details for review/apply.
 function aiCard(d) {
   const a = d.ai; if (!d.brochure) return '';
-  if (!a) return `<div class="note">${ico('info', 18)}<div><b>Fill the form from the brochure</b><div class="sub" style="font-size:12px">AI reads the brochure and suggests values. You review every field before anything is saved.</div></div></div>${btn('Extract details from brochure', { i: 'match', a: 'data-act="aiExtract"' })}`;
+  if (!a) return `<div class="note">${ico('info', 18)}<div><b>Fill the form from the brochure</b><div class="sub" style="font-size:12px">AI reads the brochure and suggests values. You review every field before anything is saved.</div></div></div>${btn(d.aiBusy ? 'Reading the brochure…' : 'Extract details from brochure', { i: 'match', a: 'data-act="aiExtract"' + (d.aiBusy ? ' disabled' : '') })}${d.aiBusy ? '<div class="sub" style="font-size:12px">This can take up to a minute for a long brochure.</div>' : ''}`;
   const ks = Object.keys(a.data);
   // Format one extracted field for display (amenities are shown by their labels).
-  const show = (k, v) => (k === 'amenities' ? v.map((id) => (S.amen.find((x) => x.id === id) || {}).label).filter(Boolean).join(', ') : k === 'layouts' ? v.length + ' layouts (' + v.map((l) => l.cfg + ' ' + l.area).join(', ') + ')' : Array.isArray(v) ? v.join(', ') : k === 'status' ? (v === 'ready' ? 'Ready for operation' : 'Under construction') : v);
-  return `<div class="card" style="background:var(--bg);gap:8px"><div class="head"><b>Preview — suggested from the brochure</b><div class="grow"></div>${badge('Review before applying', 'warn')}</div><div class="sub" style="font-size:12px">Untick anything that looks wrong. Nothing changes in the form until you apply. (Prototype: sample values — the live product reads your PDF.)</div>
+  const show = (k, v) => (k === 'amenities' ? v.map((id) => (S.amen.find((x) => x.id === id) || {}).label).filter(Boolean).join(', ') : k === 'layouts' ? v.length + ' layouts (' + v.map((l) => l.cfg + ' ' + l.area).join(', ') + ')' : k === 'addr' ? Object.values(v).filter(Boolean).join(', ') : k === 'web' ? Object.keys(v).map((x) => ({ description: 'description', summary: 'summary', floors: 'floors', priceNote: 'price note', nearby: 'nearby places' }[x] || x)).join(', ') : Array.isArray(v) ? v.join(', ') : k === 'status' ? (v === 'ready' ? 'Ready for operation' : 'Under construction') : v);
+  return `<div class="card" style="background:var(--bg);gap:8px"><div class="head"><b>Preview — suggested from the brochure</b><div class="grow"></div>${badge('Review before applying', 'warn')}</div><div class="sub" style="font-size:12px">Untick anything that looks wrong. Nothing changes in the form until you apply.${a.model ? ' Read by ' + esc(a.model) + '. Check numbers, especially areas and prices, against the brochure.' : ''}</div>${(a.warnings || []).map((w) => `<div class="sub" style="font-size:12px;color:var(--warn)">! ${esc(w)}</div>`).join('')}
   ${ks.map((k) => chk(a.pick[k] !== false, `<b>${AI_LABEL[k] || k}</b> · ${esc(show(k, a.data[k]))}`, `data-act="aiPick" data-k="${k}"`)).join('')}<div class="chips">${btn('Apply selected', { a: 'data-act="aiApply"' })}${btn('Discard', { k: 'sec', a: 'data-act="aiDiscard"' })}</div></div>`;
 }
 // Floor-plan/layout list editor of a project.
@@ -2410,19 +2430,19 @@ Object.assign(ACTS, {
   // Validate and save the project draft (create or update). (later version — overrides the earlier one above)
   saveProject() {
     const d = clone(S.d.project); if (!d.name.trim()) { fail({ 'd.project.name': 'Enter a project name — it is the only required field.' }); return; }
-    d.complete = d.status === 'ready' ? '' : [d.cm, d.cy].filter(Boolean).join(' '); d.ai = null; if (!d.place) d.place = null;
+    d.complete = d.status === 'ready' ? '' : [d.cm, d.cy].filter(Boolean).join(' '); d.ai = null; delete d.aiBusy; if (!d.place) d.place = null;
     const eid = S.d.projectEditId; if (eid) { d.id = eid; const i = S.projects.findIndex((p) => p.id === eid); S.projects[i] = d; } else { d.id = 'p' + Date.now(); S.projects.push(d); }
     S.files['proj:' + d.id] = S.files['proj:__draft'] || []; S.files['proj:__draft'] = [];
     S.d.projectEditId = null; S.toast = 'Project saved'; go('#/projects/' + d.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200);
   },
   // Run the (mock) AI extraction on a brochure.
-  aiExtract() { const d = S.d.project; d.ai = { data: mockExtract(d), pick: {} }; render(); },
+  aiExtract() { void readBrochure(); },
   // Choose extracted fields to apply.
   aiPick(el) { const a = S.d.project.ai; a.pick[el.dataset.k] = a.pick[el.dataset.k] === false; render(); },
   // Discard the extraction.
   aiDiscard() { S.d.project.ai = null; render(); },
   // Apply selected extracted fields to the draft.
-  aiApply() { const d = S.d.project; const a = d.ai; let n = 0; Object.keys(a.data).forEach((k) => { if (a.pick[k] === false) return; const v = a.data[k]; if (k === 'amenities') { v.forEach((id) => { if (!d.amenities.includes(id)) d.amenities.push(id); }); } else if (k === 'layouts') d.layouts = d.layouts.concat(v); else d[k] = Array.isArray(v) ? v.slice() : v; n++; }); d.ai = null; toast(n + ' field' + (n === 1 ? '' : 's') + ' applied — check them, then save'); },
+  aiApply() { const d = S.d.project; const a = d.ai; let n = 0; Object.keys(a.data).forEach((k) => { if (a.pick[k] === false) return; const v = a.data[k]; if (k === 'amenities') { v.forEach((id) => { if (!d.amenities.includes(id)) d.amenities.push(id); }); } else if (k === 'customAmen') { v.forEach((x) => { if (!(d.customAmen = d.customAmen || []).includes(x)) d.customAmen.push(x); }); } else if (k === 'layouts') d.layouts = d.layouts.concat(v); else if (k === 'addr') d.addr = Object.assign({}, d.addr, v); else if (k === 'web') d.web = Object.assign({}, d.web || {}, v); else d[k] = Array.isArray(v) ? v.slice() : v; n++; }); d.ai = null; toast(n + ' field' + (n === 1 ? '' : 's') + ' applied — check them, then save'); },
   // Add a layout row.
   layoutAdd() { const d = S.d.project; d.layouts.push({ cfg: (d.configs[0] || cfgFor(d.type)[0]), name: '', area: '', baths: '', units: '' }); render(); },
   // Remove a layout row.
@@ -2497,7 +2517,7 @@ ACTS.openModal = (function (orig) { return function (el, e) { const r = orig(el,
 // Change handler: file inputs (upload documents) and select-like controls.
 _doc.addEventListener('change', (e) => {
   const el = e.target; if (!el || el.type !== 'file' || !el.dataset) return;
-  if (el.dataset.brochure) { const f = (el.files || [])[0]; if (f) { S.d.project.brochure = f.name; S.d.project.ai = null; render(); } el.value = ''; }
+  if (el.dataset.brochure) { const f = (el.files || [])[0]; if (f && f.size > 10 * 1048576) toast('Brochures over 10 MB cannot be stored or read here. Compress the PDF first.'); else if (f) { S.d.project.brochure = f.name; S.d.project.ai = null; BROCHURE_FILE = f; if (/\.pdf$/i.test(f.name)) addFiles('proj:__draft', [f], 'Brochure', null); else render(); } el.value = ''; }
   if (el.dataset.photos) { const w = el.dataset.photos; const arr = S.d[w].photoList = S.d[w].photoList || []; (Array.from(el.files || []) as File[]).forEach((f) => { if (!arr.some((x) => x.name === f.name)) arr.push({ name: f.name }); }); el.value = ''; render(); }
 });
 Object.assign(ACTS, {
