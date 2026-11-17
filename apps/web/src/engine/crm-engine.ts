@@ -486,7 +486,19 @@ const okType = /\.(pdf|jpe?g|jfif|jpe|png|webp|heic|heif|gif|bmp|avif|tiff?|docx
 const isImg = (f) => /^image\//.test(f.type || '') || /\.(jpe?g|jfif|jpe|png|webp|heic|heif|gif|bmp|avif|tiff?)$/i.test(f.name);
 // Photos of a property/project: cover = the first one that has a picture to show.
 const photosOf = (scope) => filesOf(scope).filter((f) => f.cat === 'Photos' && isImg(f));
-const coverBox = (scope, h, w, empty) => { const c = photosOf(scope).find((f) => f.thumb || f.url); const n = photosOf(scope).length; if (!c) return `<div class="noimg" style="${w ? 'width:' + w + 'px;flex:none;' : ''}height:${h}px">${ico('img', 28)}<span>No image</span></div>`; return `<div class="noimg has" style="${w ? 'width:' + w + 'px;flex:none;' : ''}height:${h}px">${c ? `<img src="${c.thumb || c.url}" alt="Cover photo" onerror="this.parentNode.classList.remove('has');this.outerHTML='<span>No image</span>'" style="width:100%;height:100%;object-fit:cover">${n > 1 ? `<span class="badge" style="position:absolute;right:8px;bottom:8px">${n} photos</span>` : ''}` : ico('img', 20) + (n ? n + ' photo' + (n === 1 ? '' : 's') + ' (loading…)' : empty)}</div>`; };
+const coverLoading = new Set<string>();
+const coverBox = (scope, h, w, empty) => {
+  const ps = photosOf(scope); const n = ps.length; const sz = `${w ? 'width:' + w + 'px;flex:none;' : ''}height:${h}px`;
+  const has = (f) => !!(f && (f.thumb || f.url));
+  // The cover is always the first picture; only fall back to a later one if the first can never load.
+  let c = ps[0];
+  if (c && !has(c)) {
+    if (c.hasBlob) { if (!coverLoading.has(c.id)) { coverLoading.add(c.id); try { ADAPTER.openUrl(c, () => render()); } catch (e) { } } }
+    else c = ps.find(has);
+  }
+  if (!c || !has(c)) return `<div class="noimg" style="${sz}">${ico('img', 28)}<span>${c && c.hasBlob ? 'Loading photo…' : 'No image'}</span></div>`;
+  return `<div class="noimg has" style="${sz}"><img src="${c.thumb || c.url}" alt="Cover photo" onerror="this.parentNode.classList.remove('has');this.outerHTML='<span>No image</span>'" style="width:100%;height:100%;object-fit:cover">${n > 1 ? `<span class="badge" style="position:absolute;right:8px;bottom:8px">${n} photos</span>` : ''}</div>`;
+};
 // Can documents of this scope type be shared externally?
 const canShare = (t) => ['prop', 'proj', 'deal'].includes(t);
 // Wording of the 'share' tick box for a scope type.
