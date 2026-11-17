@@ -18,7 +18,7 @@ export function shareHtml(d: ShareMailData) {
 <p style="margin:0 0 12px">${esc(d.intro)}</p>
 <p style="margin:0 0 8px"><b>${d.propertyCount} ${d.propertyCount === 1 ? 'property' : 'properties'}</b> with price, size, amenities and why each one fits are in the attached PDF.</p>
 <p style="margin:12px 0 4px;color:${MUT};font-size:13px">Attached</p><ul style="margin:0;padding-left:20px;font-size:14px">${d.attached.map((n) => li(esc(n))).join('')}</ul>
-${d.linked.length ? `<p style="margin:14px 0 4px;color:${MUT};font-size:13px">Too large to attach: download within ${d.days} days</p><ul style="margin:0;padding-left:20px;font-size:14px">${d.linked.map((l) => li(`<a href="${esc(l.url)}" style="color:${BLUE}">${esc(l.name)}</a>`)).join('')}</ul>` : ''}
+${d.linked.length ? `<p style="margin:14px 0 4px;color:${MUT};font-size:13px">Too large to attach: download links</p><ul style="margin:0;padding-left:20px;font-size:14px">${d.linked.map((l) => li(`<a href="${esc(l.url)}" style="color:${BLUE}">${esc(l.name)}</a>`)).join('')}</ul>` : ''}
 <p style="margin:18px 0 0">Would you like to see any of them? Just reply to this email and I will set up a visit.</p>
 <p style="margin:18px 0 0">${esc(d.brokerName)}<br><span style="color:${MUT};font-size:13px">${[d.brokerPhone, d.brokerEmail].filter(Boolean).map(esc).join(' · ')}</span></p>
 </td></tr>
@@ -27,7 +27,7 @@ ${d.linked.length ? `<p style="margin:14px 0 4px;color:${MUT};font-size:13px">To
 }
 export function shareText(d: ShareMailData) {
   return [`Hi ${d.clientName.split(' ')[0] || d.clientName},`, '', d.intro, '', `${d.propertyCount} ${d.propertyCount === 1 ? 'property' : 'properties'} are in the attached PDF.`,
-    '', 'Attached:', ...d.attached.map((n) => '- ' + n), ...(d.linked.length ? ['', `Too large to attach (download within ${d.days} days):`, ...d.linked.map((l) => `- ${l.name}: ${l.url}`)] : []),
+    '', 'Attached:', ...d.attached.map((n) => '- ' + n), ...(d.linked.length ? ['', `Too large to attach (download links):`, ...d.linked.map((l) => `- ${l.name}: ${l.url}`)] : []),
     '', 'Would you like to see any of them? Just reply to this email and I will set up a visit.', '', d.brokerName, [d.brokerPhone, d.brokerEmail].filter(Boolean).join(' · '),
     '', d.orgName + (d.orgAddress ? ' · ' + d.orgAddress : '')].join('\n');
 }

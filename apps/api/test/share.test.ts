@@ -66,6 +66,7 @@ const pdfBase = { org: { name: 'Org', rera: '', city: '' }, broker: { name: 'A',
 (async () => {
   console.log('Share links');
   await t('a signed token verifies and carries its data', () => { const k = signToken({ k: 'doc', f: 'f1' }); assert.equal(verifyToken(k)!.f, 'f1'); });
+  await t('by default a link never expires', () => { const k = signToken({ k: 'doc' }); assert.equal(verifyToken(k, 1000)?.k, 'doc'); assert.equal(verifyToken(k, 4102444800)?.k, 'doc'); });
   await t('an expired token is rejected', () => { const k = signToken({ k: 'doc' }, 7, 1000); assert.equal(verifyToken(k, 1000 + 7 * 86400 - 1)?.k, 'doc'); assert.equal(verifyToken(k, 1000 + 7 * 86400 + 1), null); });
   await t('a tampered token or signature is rejected', () => {
     const [b, s] = signToken({ k: 'doc', f: 'f1' }).split('.'); const evil = Buffer.from(JSON.stringify({ k: 'doc', f: 'f4', e: 9999999999 })).toString('base64url');
