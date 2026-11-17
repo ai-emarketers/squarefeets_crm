@@ -649,9 +649,9 @@ function docVault(scope) {
 /* ------------------------------------------------------------ drafts */
 /* Blank 'new record' drafts for the forms. */
 // Blank project draft for the add-project form.
-const newProject = () => ({ name: '', dev: '', type: 'Residential Complex', rera: '', status: 'uc', cm: '', cy: '', complete: '', size: '', sizeUnit: '', towers: '', units: '', configs: [], sale: true, rent: true, saleFrom: '', saleTo: '', rentFrom: '', rentTo: '', place: null, addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal' }, amenities: [], customAmen: [], brochure: '', photoList: [], layouts: [], charges: [], chargeArea: '1450', ai: null });
+const newProject = () => ({ name: '', dev: '', type: 'Residential Complex', rera: '', status: 'uc', cm: '', cy: '', complete: '', size: '', sizeUnit: '', towers: '', units: '', configs: [], sale: true, rent: true, saleFrom: '', saleTo: '', rentFrom: '', rentTo: '', place: null, addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal' }, amenities: [], customAmen: [], brochure: '', photoList: [], layouts: [], charges: [], chargeArea: '1450', ai: null, web: {} });
 // Blank property draft for the add-property form.
-const newProperty = () => ({ purpose: 'sale', cat: 'Residential', sub: 'Flat / Apartment', projectId: null, src: { owner: true, broker: false, portal: false }, owner: { name: '', mobile: '', waSame: true, wa: '', email: '' }, broker: { name: '', company: '', phone: '', waSame: true, wa: '', email: '', groups: [], gNew: '' }, portal: { name: '99acres', pid: '', url: '', by: '' }, ref: '', addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal', flat: '' }, place: null, bhk: 3, baths: '2', carpet: '', sbu: '', extras: { balcony: false, utility: false, terrace: false, helper: false }, extraArea: '', buRatio: '', sbuRatio: '', facing: 'East', openSides: [], overlook: [], features: [], fNew: '', furn: 'Semi-furnished', cYear: '', cMonth: '', floor: '', totalFloors: '', price: '', quoted: '', maint: '', parkCost: '', brokerage: '', rent: '', deposit: '', charges: [], pstatus: 'Ready for Possession', cm: '', cy: '', pcount: 1, ptype: 'Covered', photoList: [], olNew: '', washrooms: '', seats: '', frontage: '', ceilHt: '', docks: '', powerKva: '', plotL: '', plotW: '', road: '', wall: 'Yes', corner: false, landUse: 'Residential', plotArea: '', balconies: '', lift: 'Yes', availFrom: '', tenants: [], lockin: '', negotiable: false, tenure: 'Freehold', gstOn: false });
+const newProperty = () => ({ purpose: 'sale', cat: 'Residential', sub: 'Flat / Apartment', projectId: null, src: { owner: true, broker: false, portal: false }, owner: { name: '', mobile: '', waSame: true, wa: '', email: '' }, broker: { name: '', company: '', phone: '', waSame: true, wa: '', email: '', groups: [], gNew: '' }, portal: { name: '99acres', pid: '', url: '', by: '' }, ref: '', addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal', flat: '' }, place: null, bhk: 3, baths: '2', carpet: '', sbu: '', extras: { balcony: false, utility: false, terrace: false, helper: false }, extraArea: '', buRatio: '', sbuRatio: '', facing: 'East', openSides: [], overlook: [], features: [], fNew: '', furn: 'Semi-furnished', cYear: '', cMonth: '', floor: '', totalFloors: '', price: '', quoted: '', maint: '', parkCost: '', brokerage: '', rent: '', deposit: '', charges: [], pstatus: 'Ready for Possession', cm: '', cy: '', pcount: 1, ptype: 'Covered', photoList: [], olNew: '', washrooms: '', seats: '', frontage: '', ceilHt: '', docks: '', powerKva: '', plotL: '', plotW: '', road: '', wall: 'Yes', corner: false, landUse: 'Residential', plotArea: '', balconies: '', lift: 'Yes', availFrom: '', tenants: [], lockin: '', negotiable: false, tenure: 'Freehold', gstOn: false, web: {} });
 // Blank prospect draft.
 const newProspect = () => ({ name: '', phone: '', waSame: true, wa: '', alt: '', email: '', type: 'Buyer', city: 'Kolkata', source: '99acres', lang: 'English', nri: false, contact: 'Call', assigned: 'Anil Sharma', notes: '', link: '', country: '', tz: 'GMT+4 · Gulf', bestTime: '', refBy: '', enqId: '' });
 // Blank lead draft.
@@ -768,7 +768,7 @@ const AI_LABEL = { name: 'Project name', dev: 'Developer', type: 'Project type',
 // Card showing AI-extracted project details for review/apply.
 function aiCard(d) {
   const a = d.ai; if (!d.brochure) return '';
-  if (!a) return `<div class="note">${ico('info', 18)}<div><b>Fill the form from the brochure</b><div class="sub" style="font-size:12px">AI reads the brochure and suggests values. You review every field before anything is saved.</div></div></div>${btn(d.aiBusy ? 'Reading the brochure…' : 'Extract details from brochure', { i: 'match', a: 'data-act="aiExtract"' + (d.aiBusy ? ' disabled' : '') })}${d.aiBusy ? '<div class="sub" style="font-size:12px">This can take up to a minute for a long brochure.</div>' : ''}`;
+  if (!a) return `<div class="note">${ico('info', 18)}<div><b>${ico('sparkle', 14)} Fill the form from the brochure with AI</b><div class="sub" style="font-size:12px">AI reads the brochure and suggests values. You review every field before anything is saved.</div></div></div>${btn(d.aiBusy ? 'Reading the brochure…' : 'Fill with AI from brochure', { i: 'sparkle', a: 'data-act="aiExtract"' + (d.aiBusy ? ' disabled' : '') })}${d.aiBusy ? '<div class="sub" style="font-size:12px">This can take up to a minute for a long brochure.</div>' : ''}`;
   const ks = Object.keys(a.data);
   // Format one extracted field for display (amenities are shown by their labels).
   const show = (k, v) => (k === 'amenities' ? v.map((id) => (S.amen.find((x) => x.id === id) || {}).label).filter(Boolean).join(', ') : k === 'layouts' ? v.length + ' layouts (' + v.map((l) => l.cfg + ' ' + l.area).join(', ') + ')' : k === 'addr' ? Object.values(v).filter(Boolean).join(', ') : k === 'web' ? Object.keys(v).map((x) => ({ description: 'description', summary: 'summary', floors: 'floors', priceNote: 'price note', nearby: 'nearby places' }[x] || x)).join(', ') : Array.isArray(v) ? v.join(', ') : k === 'status' ? (v === 'ready' ? 'Ready for operation' : 'Under construction') : v);
@@ -789,6 +789,42 @@ function chargesCard(d, edit) {
   ${d.charges.length ? `<div class="card" style="background:var(--bg);gap:6px"><div class="row" style="align-items:flex-end">${fld('Check the amounts for a unit of', 'd.project.chargeArea', { suf: 'sq ft', rer: 1, style: 'max-width:220px' })}</div>${kv(d.charges.map((c) => [esc(c.name) + (chargeLive(c) ? '' : ' <span class="sub">(from ' + esc(dateTxt(c.from)) + ')</span>'), inr(chargeAmt(c, d.chargeArea))]))}</div>` : ''}`);
 }
 // Add/edit project form (all sections).
+/* ---- website: content fields and the publish panel (photos use the shared photo upload: category "Photos") ---- */
+// The editable "Website content" fields (what visitors see besides the CRM's own details). Lists are typed one per line.
+function webFields(w) {
+  const d = S.d[w]; d.web = d.web || {}; const P = 'd.' + w + '.web.';
+  return `<div class="sub" style="margin-top:-6px">Shown on squarefeetsrealty.com when this is published. Everything here is optional.</div>
+    ${chk(!!d.web.featured, 'Featured (shown on the homepage and sorted first)', `data-act="togb" data-p="${P}featured"`)}
+    <div class="row">${fld('Price label', P + 'priceLabel', { ph: '₹87 Lakh onwards', hint: 'Leave empty to format the price automatically' })}${fld('Price note', P + 'priceNote', { ph: '≈ ₹9,460 / sq ft · 2/3/4 BHK' })}</div>
+    ${fld('Short summary', P + 'summary', { rows: 2, hint: 'One or two lines shown on listing cards' })}
+    ${fld('Description', P + 'description', { rows: 6, hint: 'Separate paragraphs with a blank line' })}
+    <div class="row">${fld('Floors', P + 'floors', { ph: 'G + 11' })}${fld('Best for', P + 'bestFor', { ph: 'End-users and long-hold investors' })}${fld('Score out of 10', P + 'sfScore', { ph: '7.8' })}</div>
+    ${fld('360° virtual tour link', P + 'virtualTour', { ph: 'https://' })}
+    <div class="row">${fld('Strengths', P + 'strengths', { rows: 4, hint: 'One point per line' })}${fld('Consider carefully', P + 'considerations', { rows: 4, hint: 'One point per line' })}</div>
+    ${fld('Nearby places', P + 'nearby', { rows: 4, hint: 'One per line: Place | distance, e.g. Phoolbagan Metro | 800 m · 3 min drive' })}
+    ${fld('Client reviews', P + 'reviews', { rows: 3, hint: 'Only genuine reviews. One per line: Name | stars 1-5 | review' })}`;
+}
+const webCard = (w) => card(`<h2>Website content</h2>${webFields(w)}`);
+// Link status for a record, fetched once per page visit and kept in S.webLink (never saved to the server).
+function webFetch(kind, id) {
+  const ref = kind + ':' + id;
+  ADAPTER.api?.('/website/' + kind + 's/' + encodeURIComponent(id)).then((r) => { S.webLink[ref] = r; render(); }).catch(() => { S.webLink[ref] = { error: true }; render(); });
+}
+// "Website" card on a project or property detail page: publish, update and take down.
+function webPanel(kind, id, canWrite, status, inProject) {
+  const T = (inner) => card(`<h2>Website</h2>${inner}`);
+  if (inProject) return T('<div class="sub">Units inside a project appear on the project page. Publish the project to show them on the website.</div>');
+  if (status === 'Draft') return T('<div class="sub">Save this as a listing (not a draft) before publishing it to the website.</div>');
+  S.webLink = S.webLink || {}; const ref = kind + ':' + id; let l = S.webLink[ref];
+  if (!l) { l = S.webLink[ref] = { loading: true }; webFetch(kind, id); }
+  if (l.loading) return T('<div class="sub">Checking…</div>');
+  if (l.error) return T('<div class="sub">Could not check the website status.</div>');
+  if (!l.configured) return T('<div class="sub">The website connection is not set up yet. Ask the admin to add the WordPress settings.</div>');
+  const a = `data-kind="${kind}" data-id="${id}"`; const busy = l.busy ? ' disabled' : '';
+  const when = l.syncedAt ? 'Last sent ' + new Date(l.syncedAt).toLocaleString('en-IN') + (l.syncedBy ? ' by ' + esc(l.syncedBy) : '') : '';
+  if (l.published) return T(`<div class="chips">${badge('Live on website', 'ok')}</div>${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:var(--p)">View on website</a>` : ''}<div class="sub" style="font-size:12px">${when}</div>${canWrite ? `<div class="row" style="gap:8px">${btn(l.busy ? 'Working…' : 'Update website', { k: 'sec', a: `data-act="webPublish" ${a}${busy}` })}${btn('Take off website', { k: 'ghost', a: `data-act="webUnpublish" ${a}${busy}` })}</div><div class="sub" style="font-size:12px">After editing here, press Update website to send the changes.</div>` : ''}`);
+  return T(`<div class="sub">Not on the website${l.postId ? ' (taken down)' : ''}. ${when}</div>${canWrite ? btn(l.busy ? 'Publishing…' : 'Publish to website', { i: 'upload', a: `data-act="webPublish" ${a}${busy}` }) : ''}`);
+}
 function projectForm(edit) {
   const d = S.d.project; const P = 'd.project.'; d.layouts = d.layouts || []; d.charges = d.charges || []; d.photoList = d.photoList || []; d.customAmen = d.customAmen || [];
   const years = Array.from({ length: 10 }, (_, i) => String(today.getFullYear() + i));
@@ -799,9 +835,9 @@ function projectForm(edit) {
     <div class="row"><div class="fld" style="flex:2"><span class="l">Project size</span><div style="display:flex;gap:8px;flex-wrap:wrap"><div class="inp grow" style="min-width:110px"><input id="f_d_project_size" data-f="d.project.size" value="${esc(d.size)}" inputmode="decimal" aria-label="Project size"></div><div class="inp sel" style="width:140px;max-width:100%"><select data-f="d.project.sizeUnit" aria-label="Size unit"><option value="">Select unit</option>${S.masters.sizeUnits.map((u) => `<option ${d.sizeUnit === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div></div></div>${fld('Towers / blocks', P + 'towers')}${fld('Total units', P + 'units')}</div>
     <div class="fld"><span class="l">Configurations</span>${chipMulti(P + 'configs', cfgFor(d.type), d.configs)}<small>The options follow the project type.</small></div>`),
     card(`<h2>Price range <span class="sub" style="font-weight:400">(optional)</span></h2>${d.sale ? `<div class="row">${fld('Sale price from', P + 'saleFrom', { pre: '₹', ph: '68 L' })}${fld('Sale price to', P + 'saleTo', { pre: '₹', ph: '1.5 Cr' })}</div>` : ''}${d.rent ? `<div class="row">${fld('Rent/Lease from', P + 'rentFrom', { pre: '₹', suf: '/mo' })}${fld('Rent/Lease to', P + 'rentTo', { pre: '₹', suf: '/mo' })}</div>` : ''}${!d.sale && !d.rent ? '<div class="sub">Choose Sale and/or Rent/Lease under “Available for”.</div>' : ''}`),
-    card(`<h2>Brochure</h2><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">${ico('upload', 16)}${d.brochure ? 'Replace brochure' : 'Upload brochure (PDF)'}<input type="file" hidden data-brochure="project" accept=".pdf,.jpg,.jpeg,.png"></label>${d.brochure ? `<span>${ico('file', 18)} ${esc(d.brochure)}</span>` : ''}</div>${aiCard(d)}`),
+    card(`<div class="head"><h2>Brochure</h2><div class="grow"></div><span class="badge" style="display:inline-flex;gap:4px;align-items:center;color:var(--brand,#6d4aff)">${ico('sparkle', 14)} AI fill</span></div>${d.brochure ? '' : `<div class="note">${ico('sparkle', 18)}<div><b>Save typing: let AI fill this form</b><div class="sub" style="font-size:12px">Upload the project brochure as a PDF and AI will read the name, developer, RERA, configurations, prices, amenities and layouts for you. You review every field before it is applied.</div></div></div>`}<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">${ico(d.brochure ? 'upload' : 'sparkle', 16)}${d.brochure ? 'Replace brochure' : 'Upload brochure (PDF) to fill with AI'}<input type="file" hidden data-brochure="project" accept=".pdf,.jpg,.jpeg,.png"></label>${d.brochure ? `<span>${ico('file', 18)} ${esc(d.brochure)}</span>` : ''}</div>${aiCard(d)}`),
     card(`<h2>Photos</h2><div class="sub" style="margin-top:-6px">Photos are kept apart from brochures and documents.</div><div class="chips">${d.photoList.map((x, i) => `<div class="ph" style="width:110px;height:84px;position:relative;flex-direction:column;font-size:11px;padding:4px;text-align:center;word-break:break-all">${ico('img', 18)}${esc(x.name.slice(0, 18))}<button type="button" class="fx" data-act="photoRm" data-w="project" data-i="${i}" aria-label="Remove photo" style="position:absolute;top:2px;right:2px">×</button></div>`).join('')}<label class="btn ghost" style="cursor:pointer">${ico('plus', 16)}Add photos<input type="file" multiple hidden data-photos="project" accept="image/*"></label></div>`),
-    layoutsCard(d), chargesCard(d, edit),
+    layoutsCard(d), chargesCard(d, edit), webCard('project'),
     card(docPanel('proj:__draft', { title: 'Project documents' }))
   ].join('');
   // Sale / Rent / Both toggle chips.
@@ -831,7 +867,7 @@ function projectDetail(id) {
     ${card(`<h2>Overview</h2>${overview}`)}${card(`<h2>Layouts &amp; configurations</h2>${lay}`)}${chg}
     ${card(docPanel('proj:' + p.id, { title: 'Project documents' }))}
     ${card(`<div class="head"><h2>Properties in this project</h2></div>${tabsBar('projUnits', [['all', 'All ' + S.props.filter((u) => u.projectId === p.id).length], ['sale', 'Sale ' + c.sale], ['rent', 'Rent/Lease ' + c.rent]], tab)}<div style="margin:0 calc(var(--pad)*-1) calc(var(--pad)*-1)">${ut}</div>`)}</div>
-    <div class="stack">${card(`<h2>Location</h2>${ph(170, 'Map preview')}<div class="sub">${p.place ? esc(p.place.sub) : ''}</div><div class="row" style="gap:8px">${btn('Open in Maps', { k: 'sec', c: 'full', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}</div>`)}
+    <div class="stack">${webPanel('project', p.id, canW('projects'), '', false)}${card(`<h2>Location</h2>${ph(170, 'Map preview')}<div class="sub">${p.place ? esc(p.place.sub) : ''}</div><div class="row" style="gap:8px">${btn('Open in Maps', { k: 'sec', c: 'full', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}</div>`)}
     ${card(`<div class="head"><h2>Amenities</h2><div class="grow"></div><button type="button" class="btn sm ghost" data-act="editProject" data-id="${p.id}" data-go="amenities">Edit</button></div><div class="chips">${am.map((a) => chip(esc(a.label), false, 'disabled')).join('')}${(p.customAmen || []).map((a) => chip(esc(a), false, 'disabled')).join('')}${!am.length && !(p.customAmen || []).length ? '<span class="sub">None yet</span>' : ''}</div>`)}
     ${card(`<h2>Brochure</h2>${p.brochure ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${ico('file', 22)}<div class="grow"><b>${esc(p.brochure)}</b></div>${btn('Download', { k: 'sec sm', a: 'data-act="toast" data-t="Download starts in the live product"' })}</div>` : '<div class="sub">No brochure uploaded.</div>'}`)}</div></div>`);
 }
@@ -981,7 +1017,7 @@ function sourceTab(d) {
 // Add/edit property form: dynamic fields follow category and type.
 function propertyForm(edit) {
   const d = S.d.property; const P = 'd.property.'; const t = S.tab.pf || 0;
-  const tabs = ['Source', 'Category & location', 'Specifications', 'Price', 'Status & documents', 'Photos'];
+  const tabs = ['Source', 'Category & location', 'Specifications', 'Price', 'Status & documents', 'Photos', 'Website'];
   const pr = d.projectId ? projById(d.projectId) : null; const q = (S.pq.q || '').toLowerCase(); const pm = S.projects.filter((p) => !q || p.name.toLowerCase().includes(q));
   const years = Array.from({ length: 46 }, (_, i) => String(today.getFullYear() + 5 - i));
   const land = d.cat === 'Land'; const res = d.cat === 'Residential';
@@ -1020,7 +1056,7 @@ function propertyForm(edit) {
     ${d.pstatus !== 'Ready for Possession' ? `<div class="row" style="max-width:420px">${fld('Expected completion — month', P + 'cm', { opts: [['', 'Select month'], ...MONTHS3] })}${fld('Year', P + 'cy', { opts: [['', 'Select year'], ...Array.from({ length: 8 }, (_, i) => String(today.getFullYear() + i))] })}</div>` : ''}
     <div class="card" style="background:var(--bg)">${docPanel('prop:__draft', {})}</div>`;
   const s5 = `<div class="chips">${d.photoList.map((x, i) => `<div class="ph" style="width:120px;height:96px;position:relative;flex-direction:column;font-size:11px;padding:4px;text-align:center;word-break:break-all">${ico('img', 18)}${i === 0 ? '<b>Cover</b>' : ''}${esc(x.name.slice(0, 18))}<button type="button" class="fx" data-act="photoRm" data-w="property" data-i="${i}" aria-label="Remove photo" style="position:absolute;top:2px;right:2px">×</button></div>`).join('')}</div><label class="btn ghost" style="cursor:pointer;align-self:flex-start">${ico('upload', 16)}Add photos<input type="file" multiple hidden data-photos="property" accept="image/*"></label><div class="sub">Photos are kept apart from documents. The first photo is the cover.</div>`;
-  const secs = [sourceTab(d), s1, s2, s3 + s3b, s4, s5]; const last = t === tabs.length - 1;
+  const secs = [sourceTab(d), s1, s2, s3 + s3b, s4, s5, webFields('property')]; const last = t === tabs.length - 1;
   return page(edit ? 'Edit property' : 'Add property', 'The same form is used to create and to edit', btn('Cancel', { k: 'sec', href: edit ? '#/properties/' + S.d.propEditId : '#/properties' }) + btn('Save draft', { k: 'ghost', a: 'data-act="saveProperty" data-draft="1"' }) + btn(edit ? 'Save changes' : 'Save property', { a: 'data-act="saveProperty"' }),
     `<div class="card"><div class="tabs" role="tablist">${tabs.map((x, i) => `<button type="button" role="tab" class="${t === i ? 'on' : ''}" data-act="pfTab" data-i="${i}">${i + 1}. ${x}</button>`).join('')}</div><h2>${tabs[t]}</h2>${secs[t]}<div class="head" style="border-top:1px solid var(--line);padding-top:14px"><div class="sub">Property ID is generated on save. Save as draft any time — drafts show under the “Draft” filter and on your dashboard.</div><div class="grow"></div>${t > 0 ? btn('Back', { k: 'sec', a: `data-act="pfTab" data-i="${t - 1}"` }) : ''}${!last ? btn('Next', { a: `data-act="pfTab" data-i="${t + 1}"` }) : ''}</div></div>`);
 }
@@ -1044,7 +1080,7 @@ function propertyDetail(id) {
     `<div class="list" style="margin:0 calc(var(--pad)*-1) calc(var(--pad)*-1)"><div class="li"><div class="grow"><b>Listed</b><div class="sub">Added by ${esc(ME().name)}</div></div><span class="sub">${esc(dateTxt(p.created))}</span></div>${S.visits.filter((v) => v.prop === p.id).map((v) => `<a class="li" href="#/visits/${v.id}"><div class="grow"><b>Visit ${v.id}</b><div class="sub">${esc(prosById(v.cid).name)} · ${esc(v.when)}</div></div>${statusBadge(v.status)}</a>`).join('')}</div>`;
   const phs = f && f.photoList.length ? f.photoList.length + ' photo' + (f.photoList.length === 1 ? '' : 's') : 'Cover photo';
   return page(esc(p.title) + ` <span class="mono sub" style="font-size:14px">${p.id}</span>`, esc(p.loc) + ' · ' + fmtPrice(p), (canW('properties') ? btn('Share', { k: 'ghost', a: `data-act="openModal" data-m="share" data-ids="${p.id}"` }) + btn('Schedule visit', { k: 'ghost', a: `data-act="openModal" data-m="visit" data-ids="${p.id}"` }) + btn('Edit', { i: 'edit', a: `data-act="editProperty" data-id="${p.id}"` }) : ''),
-    `<div class="grid2"><div class="card">${tabsBar('propTab', [['overview', 'Overview'], ['matches', 'Matches ' + ms.length], ['activity', 'Activity']], tab)}${body}</div><div class="stack">${card(`<h2>Photos</h2>${coverBox('prop:' + p.id, 170, 0, 'Cover photo')}`)}${card(`<h2>Location</h2>${ph(150, 'Map preview')}${btn('Open in Maps', { k: 'sec', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}`)}</div></div>${card(docPanel('prop:' + p.id))}`);
+    `<div class="grid2"><div class="card">${tabsBar('propTab', [['overview', 'Overview'], ['matches', 'Matches ' + ms.length], ['activity', 'Activity']], tab)}${body}</div><div class="stack">${webPanel('property', p.id, canW('properties'), p.status, !!p.projectId)}${card(`<h2>Photos</h2>${coverBox('prop:' + p.id, 170, 0, 'Cover photo')}`)}${card(`<h2>Location</h2>${ph(150, 'Map preview')}${btn('Open in Maps', { k: 'sec', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}`)}</div></div>${card(docPanel('prop:' + p.id))}`);
 }
 // Properties list screen with filters, import/export buttons.
 function propertiesView() {
@@ -2514,6 +2550,25 @@ Object.assign(ACTS, {
   chargeRm(el) { S.d.project.charges.splice(Number(el.dataset.i), 1); render(); },
   // Remove a photo.
   photoRm(el) { const w = el.dataset.w, i = Number(el.dataset.i), x = S.d[w].photoList[i]; S.d[w].photoList.splice(i, 1); if (x && x.fid) { const sc = (w === 'project' ? 'proj:' : 'prop:') + '__draft'; S.files[sc] = filesOf(sc).filter((f) => f.id !== x.fid); } render(); },
+  // Send this project/property to the website (creates the page the first time, updates it afterwards).
+  async webPublish(el) {
+    const kind = el.dataset.kind, id = el.dataset.id, ref = kind + ':' + id; S.webLink = S.webLink || {}; S.webLink[ref] = { ...(S.webLink[ref] || {}), busy: true }; render();
+    try {
+      await ADAPTER.flushNow?.(S); // make sure the latest edits are on the server first
+      const r = await ADAPTER.api!('/website/' + kind + 's/' + encodeURIComponent(id) + '/publish', { method: 'POST' });
+      S.webLink[ref] = { configured: true, published: true, postId: r.postId, url: r.url, syncedAt: new Date().toISOString(), syncedBy: ME().name }; toast('Sent to the website');
+    } catch (e: any) { S.webLink[ref] = { ...S.webLink[ref], busy: false }; toast(e?.message || 'Could not publish to the website'); }
+    render();
+  },
+  // Take the listing off the website (it stays in the CRM and can be published again).
+  async webUnpublish(el) {
+    const kind = el.dataset.kind, id = el.dataset.id, ref = kind + ':' + id; S.webLink[ref] = { ...(S.webLink[ref] || {}), busy: true }; render();
+    try {
+      const r = await ADAPTER.api!('/website/' + kind + 's/' + encodeURIComponent(id) + '/unpublish', { method: 'POST' });
+      S.webLink[ref] = { ...S.webLink[ref], published: false, busy: false, postId: r.postId, url: r.url, syncedAt: new Date().toISOString(), syncedBy: ME().name }; toast('Taken off the website');
+    } catch (e: any) { S.webLink[ref] = { ...S.webLink[ref], busy: false }; toast(e?.message || 'Could not take it off the website'); }
+    render();
+  },
   // Remove an amenity from the form.
   amRmForm(el) { const P = S.d.project; P.amenities = P.amenities.filter((x) => x !== el.dataset.id); render(); },
   // Remove a custom amenity.
@@ -3247,6 +3302,7 @@ _doc.addEventListener('drop', (e) => { const z = e.target.closest && e.target.cl
  * The API enforces the same rules (beforeRemove hooks), so nothing linked can be deleted even by two users at once. */
 
 // Trash-can icon for the delete buttons.
+IC.sparkle = 'M9.9 15.5A2 2 0 0 0 8.5 14.1l-6.1-1.6a.5.5 0 0 1 0-1L8.5 9.9A2 2 0 0 0 9.9 8.5l1.6-6.1a.5.5 0 0 1 1 0l1.6 6.1a2 2 0 0 0 1.4 1.4l6.1 1.6a.5.5 0 0 1 0 1l-6.1 1.6a2 2 0 0 0-1.4 1.4l-1.6 6.1a.5.5 0 0 1-1 0zM20 3v4M22 5h-4';
 IC.trash = 'M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3';
 
 // Everything the edit/delete code needs to know about each kind of record.
