@@ -3,11 +3,14 @@
 // any other server that offers implicit TLS on port 465.
 import * as tls from 'tls';
 
+/** A file to attach: shown to the reader under `name`. */
+export interface MailAttachment { name: string; content: Buffer; type?: string }
+
 // Everything needed to send one email over SMTP.
 export interface SmtpMail {
   host: string; port: number; user: string; pass: string;
   from: string; fromName: string; to: string; toName: string; replyTo: string; replyToName: string;
-  subject: string; html: string; text: string;
+  subject: string; html: string; text: string; attachments?: MailAttachment[];
   tlsOptions?: tls.ConnectionOptions; // tests only (self-signed certificate)
 }
 
@@ -18,19 +21,32 @@ const encWord = (s: string) => '=?UTF-8?B?' + Buffer.from(oneLine(s), 'utf8').to
 // "Name" <addr> with the name encoded.
 const addr = (name: string, email: string) => (name ? `${encWord(name)} <${oneLine(email)}>` : oneLine(email));
 // Base64 body wrapped at 76 characters per line.
-const b64 = (s: string) => (Buffer.from(s, 'utf8').toString('base64').match(/.{1,76}/g) || []).join('\r\n');
+const b64 = (s: string | Buffer) => (Buffer.from(s as any, 'utf8').toString('base64').match(/.{1,76}/g) || []).join('\r\n');
+// A file name that is safe inside a header: no quotes, slashes or line breaks.
+const safeName = (s: string) => oneLine(s).replace(/["\\/<>:*?|]/g, '_') || 'file';
 
-/** Build the full MIME message (multipart/alternative: plain text + HTML). */
+/** Build the full MIME message: plain text + HTML, and when files are attached a multipart/mixed wrapper around them. */
 export function buildMime(m: SmtpMail, boundary = 'sf-' + Math.random().toString(36).slice(2)) {
-  const host = (m.from.split('@')[1] || 'localhost');
-  return [
+  const host = (m.from.split('@')[1] || 'localhost'); const atts = m.attachments || [];
+  const head = [
     `From: ${addr(m.fromName, m.from)}`, `To: ${addr(m.toName, m.to)}`, `Reply-To: ${addr(m.replyToName, m.replyTo)}`,
-    `Subject: ${encWord(m.subject)}`, `Date: ${new Date().toUTCString()}`, `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@${host}>`,
-    'MIME-Version: 1.0', `Content-Type: multipart/alternative; boundary="${boundary}"`, '',
-    `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(m.text),
-    `--${boundary}`, 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(m.html),
-    `--${boundary}--`, '',
-  ].join('\r\n');
+    `Subject: ${encWord(m.subject)}`, `Date: ${new Date().toUTCString()}`, `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@${host}>`, 'MIME-Version: 1.0',
+  ];
+  const alt = (b: string) => [
+    `--${b}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(m.text),
+    `--${b}`, 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(m.html),
+    `--${b}--`,
+  ];
+  if (!atts.length) return [...head, `Content-Type: multipart/alternative; boundary="${boundary}"`, '', ...alt(boundary), ''].join('\r\n');
+  const outer = boundary + '-mixed';
+  const parts: string[] = [...head, `Content-Type: multipart/mixed; boundary="${outer}"`, '', `--${outer}`, `Content-Type: multipart/alternative; boundary="${boundary}"`, '', ...alt(boundary)];
+  for (const a of atts) {
+    const nm = safeName(a.name);
+    parts.push(`--${outer}`, `Content-Type: ${/^[\w.+-]+\/[\w.+-]+$/.test(a.type || '') ? a.type : 'application/octet-stream'}; name="${encWord(nm)}"`, 'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${encWord(nm)}"`, '', b64(a.content));
+  }
+  parts.push(`--${outer}--`, '');
+  return parts.join('\r\n');
 }
 
 /** Send one email. Resolves when the server accepted it; rejects with a readable message otherwise. */

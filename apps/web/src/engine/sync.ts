@@ -170,7 +170,7 @@ export function createAdapter(onLogout: () => void) {
       let n = 0;
       for (const scope of Object.keys(S.files || {})) for (const f of S.files[scope]) {
         if (n >= 24) return;
-        if (f.hasBlob && /^image\//.test(f.type || '') && !f.thumb && (f.size || 0) < 3 * 1048576) { n++; await this.openUrl(f, () => hooks.render?.()); }
+        if (f.hasBlob && (/^image\//.test(f.type || '') || /\.(jpe?g|jfif|png|webp|gif|bmp|avif)$/i.test(f.name || '')) && !f.thumb && !f.url) { n++; await this.openUrl(f, () => hooks.render?.()); }
       }
     },
     // Sign out: forget the token and go to /login.
