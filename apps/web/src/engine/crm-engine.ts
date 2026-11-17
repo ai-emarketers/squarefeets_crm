@@ -475,9 +475,12 @@ const filesOf = (s) => S.files[s] || (S.files[s] = []);
 // Bytes -> '1.2 MB' / '340 KB'.
 const fmtSize = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
 // Allowed upload file extensions.
-const okType = /\.(pdf|jpe?g|png|webp|heic|docx?|xlsx?|csv|txt)$/i;
+const okType = /\.(pdf|jpe?g|jfif|jpe|png|webp|heic|heif|gif|bmp|avif|tiff?|docx?|xlsx?|csv|txt)$/i;
 // Is this document an image (so a thumbnail can be shown)?
-const isImg = (f) => /^image\//.test(f.type || '') || /\.(jpe?g|png|webp|heic)$/i.test(f.name);
+const isImg = (f) => /^image\//.test(f.type || '') || /\.(jpe?g|jfif|jpe|png|webp|heic|heif|gif|bmp|avif|tiff?)$/i.test(f.name);
+// Photos of a property/project: cover = the first one that has a picture to show.
+const photosOf = (scope) => filesOf(scope).filter((f) => f.cat === 'Photos' && isImg(f));
+const coverBox = (scope, h, w, empty) => { const c = photosOf(scope).find((f) => f.thumb || f.url); const n = photosOf(scope).length; return `<div class="ph" style="${w ? 'width:' + w + 'px;flex:none;' : ''}height:${h}px;overflow:hidden;padding:0;position:relative">${c ? `<img src="${c.thumb || c.url}" alt="Cover photo" style="width:100%;height:100%;object-fit:cover">${n > 1 ? `<span class="badge" style="position:absolute;right:8px;bottom:8px">${n} photos</span>` : ''}` : ico('img', 20) + (n ? n + ' photo' + (n === 1 ? '' : 's') + ' (loading…)' : empty)}</div>`; };
 // Can documents of this scope type be shared externally?
 const canShare = (t) => ['prop', 'proj', 'deal'].includes(t);
 // Wording of the 'share' tick box for a scope type.
@@ -550,7 +553,7 @@ function addFiles(scope, list, cat, el) {
     if (isImg(rec) && f.size < 3 * 1048576 && typeof FileReader !== 'undefined') { const r = new FileReader(); r.onload = () => { rec.thumb = r.result; render(); }; r.readAsDataURL(f); }
     if (t === 'deal') { const d = S.deals.find((x) => x.id === scopeId(scope)); if (d) { const row = d.docs.find((x) => x.name === c); if (row) { row.fid = row.fid || rec.id; if (['Pending', 'Requested'].includes(row.st)) row.st = 'Received'; row.rec = iso(today); } dlog(d, 'Uploaded ' + c + ': ' + f.name); } }
   });
-  if (bad.length && ok) toast(ok + ' uploaded · skipped: ' + bad.join('; ')); else if (bad.length) toast(bad.join('; ')); else if (ok) toast(ok + ' document' + (ok > 1 ? 's' : '') + ' uploaded'); else render();
+  if (bad.length && ok) toast(ok + ' uploaded · skipped: ' + bad.join('; ')); else if (bad.length) toast(bad.join('; ')); else if (ok) toast(ok + (cat === 'Photos' ? ' photo' : ' document') + (ok > 1 ? 's' : '') + ' uploaded'); else render();
 }
 
 // Document categories that carry an expiry date.
@@ -788,7 +791,7 @@ function projectDetail(id) {
   const lay = (p.layouts || []).length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Configuration</th><th>Layout</th><th>Area</th><th>Baths</th><th>Units</th></tr></thead><tbody>${p.layouts.map((l) => `<tr><td><b>${esc(l.cfg)}</b></td><td>${esc(l.name)}</td><td>${esc(l.area)} sq ft</td><td>${esc(l.baths || '—')}</td><td>${esc(l.units || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="sub">No layouts added yet.</div>';
   const chg = personaShowsCharges() && (p.charges || []).length ? card(`<h2>Charges per sq ft</h2><div class="row" style="align-items:flex-end">${fld('For a unit of', 'tab.pchArea', { suf: 'sq ft', rer: 1, style: 'max-width:200px' })}</div>${kv(p.charges.map((x) => [esc(x.name) + ' <span class="sub">· ₹' + esc(x.rate) + '/sq ft' + (x.from ? ' from ' + esc(dateTxt(x.from)) : '') + '</span>', inr(chargeAmt(x, area)) + (chargeLive(x) ? '' : ' <span class="badge">Upcoming</span>')]))}`) : '';
   return page(esc(p.name), esc(p.place ? p.place.sub : 'No location set'), btn('Edit project', { k: 'sec', i: 'edit', a: `data-act="editProject" data-id="${p.id}"` }) + btn('Add property', { i: 'plus', a: `data-act="newProperty" data-pid="${p.id}"` }),
-    `<div class="grid2"><div class="stack">${card(`<div style="display:flex;gap:16px;flex-wrap:wrap"><div class="ph" style="width:260px;height:170px;flex:none">${ico('img', 20)}${(p.photoList || []).length ? (p.photoList.length + ' photo' + (p.photoList.length === 1 ? '' : 's')) : 'No photos yet'}</div><div style="display:flex;flex-direction:column;gap:8px;justify-content:center"><div class="chips">${projStatus(p.status)}${p.size ? badge(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : ''}${badge('Sale ' + c.sale)}${badge('Rent/Lease ' + c.rent, 'blue')}${projCompl(p) ? badge('Expected ' + projCompl(p)) : ''}</div></div></div>`)}
+    `<div class="grid2"><div class="stack">${card(`<div style="display:flex;gap:16px;flex-wrap:wrap">${coverBox('proj:' + p.id, 170, 260, 'No photos yet')}<div style="display:flex;flex-direction:column;gap:8px;justify-content:center"><div class="chips">${projStatus(p.status)}${p.size ? badge(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : ''}${badge('Sale ' + c.sale)}${badge('Rent/Lease ' + c.rent, 'blue')}${projCompl(p) ? badge('Expected ' + projCompl(p)) : ''}</div></div></div>`)}
     ${card(`<h2>Overview</h2>${overview}`)}${card(`<h2>Layouts &amp; configurations</h2>${lay}`)}${chg}
     ${card(docPanel('proj:' + p.id, { title: 'Project documents' }))}
     ${card(`<div class="head"><h2>Properties in this project</h2></div>${tabsBar('projUnits', [['all', 'All ' + S.props.filter((u) => u.projectId === p.id).length], ['sale', 'Sale ' + c.sale], ['rent', 'Rent/Lease ' + c.rent]], tab)}<div style="margin:0 -20px -20px">${ut}</div>`)}</div>
@@ -1005,7 +1008,7 @@ function propertyDetail(id) {
     `<div class="list" style="margin:0 -20px -20px"><div class="li"><div class="grow"><b>Listed</b><div class="sub">Added by ${esc(ME().name)}</div></div><span class="sub">${esc(dateTxt(p.created))}</span></div>${S.visits.filter((v) => v.prop === p.id).map((v) => `<a class="li" href="#/visits/${v.id}"><div class="grow"><b>Visit ${v.id}</b><div class="sub">${esc(prosById(v.cid).name)} · ${esc(v.when)}</div></div>${statusBadge(v.status)}</a>`).join('')}</div>`;
   const phs = f && f.photoList.length ? f.photoList.length + ' photo' + (f.photoList.length === 1 ? '' : 's') : 'Cover photo';
   return page(esc(p.title) + ` <span class="mono sub" style="font-size:14px">${p.id}</span>`, esc(p.loc) + ' · ' + fmtPrice(p), (canW('properties') ? btn('Share', { k: 'ghost', a: `data-act="openModal" data-m="share" data-ids="${p.id}"` }) + btn('Schedule visit', { k: 'ghost', a: `data-act="openModal" data-m="visit" data-ids="${p.id}"` }) + btn('Edit', { i: 'edit', a: `data-act="editProperty" data-id="${p.id}"` }) : ''),
-    `<div class="grid2"><div class="card">${tabsBar('propTab', [['overview', 'Overview'], ['matches', 'Matches ' + ms.length], ['activity', 'Activity']], tab)}${body}</div><div class="stack">${card(`<h2>Photos</h2><div class="ph" style="height:200px">${ico('img', 20)}${phs}</div>`)}${card(`<h2>Location</h2>${ph(150, 'Map preview')}${btn('Open in Maps', { k: 'sec', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}`)}</div></div>${card(docPanel('prop:' + p.id))}`);
+    `<div class="grid2"><div class="card">${tabsBar('propTab', [['overview', 'Overview'], ['matches', 'Matches ' + ms.length], ['activity', 'Activity']], tab)}${body}</div><div class="stack">${card(`<h2>Photos</h2>${coverBox('prop:' + p.id, 200, 0, 'Cover photo')}`)}${card(`<h2>Location</h2>${ph(150, 'Map preview')}${btn('Open in Maps', { k: 'sec', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}`)}</div></div>${card(docPanel('prop:' + p.id))}`);
 }
 // Properties list screen with filters, import/export buttons.
 function propertiesView() {
@@ -2412,7 +2415,7 @@ Object.assign(ACTS, {
   // Remove a charge row.
   chargeRm(el) { S.d.project.charges.splice(Number(el.dataset.i), 1); render(); },
   // Remove a photo.
-  photoRm(el) { S.d[el.dataset.w].photoList.splice(Number(el.dataset.i), 1); render(); },
+  photoRm(el) { const w = el.dataset.w, i = Number(el.dataset.i), x = S.d[w].photoList[i]; S.d[w].photoList.splice(i, 1); if (x && x.fid) { const sc = (w === 'project' ? 'proj:' : 'prop:') + '__draft'; S.files[sc] = filesOf(sc).filter((f) => f.id !== x.fid); } render(); },
   // Remove an amenity from the form.
   amRmForm(el) { const P = S.d.project; P.amenities = P.amenities.filter((x) => x !== el.dataset.id); render(); },
   // Remove a custom amenity.
@@ -2478,7 +2481,7 @@ ACTS.openModal = (function (orig) { return function (el, e) { const r = orig(el,
 _doc.addEventListener('change', (e) => {
   const el = e.target; if (!el || el.type !== 'file' || !el.dataset) return;
   if (el.dataset.brochure) { const f = (el.files || [])[0]; if (f) { S.d.project.brochure = f.name; S.d.project.ai = null; render(); } el.value = ''; }
-  if (el.dataset.photos) { const w = el.dataset.photos; const arr = S.d[w].photoList = S.d[w].photoList || []; (Array.from(el.files || []) as File[]).forEach((f) => { if (!arr.some((x) => x.name === f.name)) arr.push({ name: f.name }); }); el.value = ''; render(); }
+  if (el.dataset.photos) { const w = el.dataset.photos; const arr = S.d[w].photoList = S.d[w].photoList || []; const sc = (w === 'project' ? 'proj:' : 'prop:') + '__draft'; const before = new Set(filesOf(sc).map((x) => x.id)); const picked = (Array.from(el.files || []) as File[]).filter((f) => isImg({ type: f.type, name: f.name })); const skipped = (el.files ? el.files.length : 0) - picked.length; addFiles(sc, picked, 'Photos', el); filesOf(sc).filter((x) => !before.has(x.id)).forEach((x) => { if (!arr.some((y) => y.fid === x.id)) arr.push({ name: x.name, fid: x.id }); }); if (skipped) toast(skipped + ' file' + (skipped > 1 ? 's were' : ' was') + ' not a picture and was skipped'); el.value = ''; render(); }
 });
 Object.assign(ACTS, {
   // Change a lead's stage. (later version — overrides the earlier one above)
