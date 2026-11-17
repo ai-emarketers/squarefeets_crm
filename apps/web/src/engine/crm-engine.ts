@@ -1191,6 +1191,7 @@ const REQ_EXTRA = ['areaType', 'lift', 'floor', 'furn', 'tenant', 'lease', 'poss
 const reqHay = (r) => { const c = prosById(r.cid) || {}; return hay(r, [c.name, c.phone, c.email, r.who].join(' ')); };
 // Budget text of a requirement.
 const reqBudget = (r) => { const f = r.purpose === 'sale' ? fmtL : fmtRent; const lo = Number(r.min) || 0; const hi = Number(r.max) || 0; const open = !hi || hi >= 1000000; if (!lo && open) return 'Any budget'; if (!lo) return 'Up to ' + f(hi); if (open) return 'From ' + f(lo); return f(lo) + ' – ' + f(hi); };
+const dashTxt = (v) => (v === undefined || v === null || v === '' ? '—' : String(v));
 const dash = (v) => (v === undefined || v === null || v === '' || v === '—' ? '—' : esc(String(v)));
 // Requirements list screen: one row per client, with how many requirements they have.
 function reqsView() {
@@ -1211,22 +1212,22 @@ function reqDetail(id) {
   const c = prosById(r.cid) || { id: '', name: '—', type: '', phone: '', email: '' }; const sib = S.reqs.filter((x) => x.cid === r.cid); const w = canW('requirements');
   const k = reqKind(r); const sale = r.purpose === 'sale'; const res = k === 'flat' || k === 'house';
   const tabs = sib.map((x) => `<a class="chip${x.id === r.id ? ' on' : ''}" href="#/requirements/${x.id}">${PURPOSE[x.purpose]} · ${esc(reqSpec(x) ? reqSpec(x) + ' ' : '')}${esc(x.type)}</a>`).join('');
-  const sec = (t, rows) => { rows = rows.filter((x) => x[1] !== '—' && x[1] !== undefined && x[1] !== ''); return rows.length ? card(`<h2>${t}</h2><div class="kvg">${rows.map((x) => `<div><div class="sub" style="font-size:12px">${x[0]}</div><b>${x[1]}</b></div>`).join('')}</div>`) : ''; };
-  const locs = (r.locs || []).length ? (r.locs || []).map((l) => badge(l)).join(' ') : 'Any area';
+  const cell = (x) => `<div><div class="sub" style="font-size:11px">${x[0]}</div><div style="font-weight:500;word-break:break-word">${x[1]}</div></div>`;
+  const sec = (t, rows, extra = '') => { rows = rows.filter((x) => x && x[0] && x[1] !== '—' && x[1] !== undefined && x[1] !== ''); return rows.length || extra ? card(`<h2>${t}</h2>${rows.length ? `<div class="kvg">${rows.map(cell).join('')}</div>` : ''}${extra}`) : ''; };
   const stCls = r.status === 'Active' ? 'ok' : r.status === 'On hold' ? 'warn' : '';
-  const sum = `${PURPOSE[r.purpose]} · ${reqSpec(r) ? reqSpec(r) + ' ' : ''}${r.type} · ${(r.locs || []).join(', ') || 'any area'} · ${reqBudget(r)}`;
-  return page(esc(c.name) + ' ' + badge(r.id), esc(c.type) + ' · ' + esc(maskNum(c.phone)), (c.id ? btn('Open prospect', { k: 'sec', href: '#/prospects/' + c.id }) : '') + btn('WhatsApp', { k: 'ghost', i: 'chat', a: 'data-act="toast" data-t="Opening WhatsApp…"' }) + (w ? btn('Add requirement', { i: 'plus', a: `data-act="newReq" data-cid="${r.cid}"` }) : ''),
-    `<div class="chips">${tabs}</div>
-    <div class="grid2"><div class="mason">
-    ${sec('Property', [['Purpose', PURPOSE[r.purpose]], ['Type', esc(r.type)], [k === 'comm' ? 'Commercial type' : res ? 'Bedrooms' : 'Type', k === 'comm' ? dash(r.csub) : res ? (Number(r.bhk) ? r.bhk + ' BHK' : 'Any') : '—'], ['Facing', dash(r.pface)]])}
-    ${sec('Budget and payment', [['Budget', reqBudget(r)], sale ? ['Financing', dash(r.fin)] : ['Lease length', dash(r.lease)], sale ? ['Possession', dash(r.possession)] : ['Tenant type', dash(r.tenant)], r.use ? ['Business use', dash(r.use)] : ['Furnishing', dash(r.furn)]])}
-    ${card(`<h2>Location</h2><div class="chips">${locs}</div>`)}
-    ${sec('Size, preferences and timeline', [['Area', dash(r.area)], ['Area measured as', dash(r.areaType)], ['Parking', dash(r.parking)], ['Lift required', dash(r.lift)], ['Floor', dash(r.floor)], ['Furnishing', dash(r.furn)], k === 'plot' ? ['Road width', r.road ? esc(r.road) + ' ft' : '—'] : ['', ''], k === 'plot' ? ['Boundary wall', dash(r.wall)] : ['', ''], ['Needed', dash(r.timeline)], ['Added on', dash(r.created)]].filter((x) => x[0]))}
-    </div><div class="stack">
-    ${card(`<h2>Status</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${badge(r.status, stCls)}${badge((r.pri || 'Normal') + ' priority', r.pri === 'Urgent' ? 'err' : r.pri === 'High' ? 'warn' : '')}</div><div class="kvg">${[['Source', dash(r.src)], ['Handled by', dash(r.by)]].filter((x) => x[1] !== '—').map((x) => `<div><div class="sub" style="font-size:12px">${x[0]}</div><b>${x[1]}</b></div>`).join('')}</div>${w ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`)}
-    ${card(`<h2>Summary and notes</h2><div class="sub">${esc(sum)}</div><div class="sub" style="border-top:1px solid var(--line2);padding-top:8px">${esc(r.notes || 'No notes yet.')}</div>`)}
-    </div></div>
-    ${card(docPanel('req:' + r.id, { title: 'Attachments' }))}`);
+  const lo = Number(r.min) || 0; const hi = Number(r.max) || 0; const fm = sale ? fmtL : fmtRent; const open = !hi || hi >= 1000000;
+  const key = (l, v) => `<div><div class="sub" style="font-size:11px">${l}</div><div class="reqkey">${v}</div></div>`;
+  const keyStrip = card(`<div class="keys">${key(sale ? 'Budget' : 'Rent budget', esc(reqBudget(r)))}${key('Looking for', esc((reqSpec(r) ? reqSpec(r) + ' ' : '') + r.type))}${key('Area', esc(dashTxt(r.area)))}${key('Needed', esc(dashTxt(r.timeline)))}</div>`);
+  const locs = (r.locs || []).length ? (r.locs || []).map((l) => badge(l)).join(' ') : '<span class="sub">Any area</span>';
+  const prop = sec('Property', [['Purpose', PURPOSE[r.purpose]], ['Type', esc(r.type)], res ? ['Bedrooms', Number(r.bhk) ? r.bhk + ' BHK' : 'Any'] : null, k === 'comm' ? ['Commercial type', dash(r.csub)] : null, k === 'comm' ? ['Business use', dash(r.use)] : null, ['Facing', dash(r.pface)]]);
+  const pay = sec('Budget and payment', [['Budget min', lo ? fm(lo) : '—'], ['Budget max', open ? '—' : fm(hi)], sale ? ['Financing', dash(r.fin)] : ['Lease length', dash(r.lease)], sale ? ['Possession', dash(r.possession)] : ['Tenant type', dash(r.tenant)]]);
+  const size = sec('Size and preferences', [['Area', dash(r.area)], ['Measured as', dash(r.areaType)], k === 'plot' ? null : ['Floor', dash(r.floor)], k === 'plot' ? null : ['Parking', dash(r.parking)], k === 'plot' ? null : ['Lift required', dash(r.lift)], k === 'plot' ? null : ['Furnishing', dash(r.furn)], k === 'plot' ? ['Road width', r.road ? esc(r.road) + ' ft' : '—'] : null, k === 'plot' ? ['Boundary wall', dash(r.wall)] : null]);
+  const locCard = card(`<h2>Locations and notes</h2><div class="chips">${locs}</div>${r.notes ? `<div style="border-top:1px solid var(--line2);padding-top:8px">${esc(r.notes)}</div>` : ''}`);
+  const status = card(`<h2>Status and handling</h2><div class="kvg">${[['Priority', esc(r.pri || 'Normal')], ['Source', dash(r.src)], ['Handled by', dash(r.by)], ['Added on', dash(r.created)]].filter((x) => x[1] !== '—').map(cell).join('')}</div>${w ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`);
+  const sub = [esc(c.type), esc(maskNum(c.phone)), c.email ? esc(c.email) : ''].filter(Boolean).join(' · ');
+  return page(esc(c.name) + ' ' + badge(r.id) + ' ' + badge(r.status, stCls), sub, (c.id ? btn('Open prospect', { k: 'sec', href: '#/prospects/' + c.id }) : '') + btn('WhatsApp', { k: 'ghost', i: 'chat', a: 'data-act="toast" data-t="Opening WhatsApp…"' }) + (w ? btn('Add requirement', { i: 'plus', a: `data-act="newReq" data-cid="${r.cid}"` }) : ''),
+    `<div class="chips">${tabs}</div>${keyStrip}
+    <div class="reqgrid"><div class="stack">${prop}${pay}${size}${locCard}</div><div class="stack">${status}${card(docPanel('req:' + r.id, { title: 'Attachments' }))}</div></div>`);
 }
 
 
