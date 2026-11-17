@@ -19,6 +19,7 @@ import { FilesModule } from './files/files.module';
 import { MailModule } from './mail/mail.module';
 import { ShareModule } from './share/share.module';
 import { StateModule } from './state/state.module';
+import { WebsiteModule } from './website/website.module';
 import { CaptureModule } from './capture/capture.module';
 import { HealthController } from './health.controller';
 
@@ -29,7 +30,7 @@ import { HealthController } from './health.controller';
     PrismaModule, AuditModule, AuthModule,    // global infrastructure: database, audit log, authentication
     // one module per business area
     ProjectsModule, PropertiesModule, LeadsModule, ProspectsModule, RequirementsModule, VisitsModule,
-    FollowUpsModule, DealsModule, BrokerageModule, TeamModule, ExportsModule, FilesModule, MailModule, CaptureModule, ShareModule,
+    FollowUpsModule, DealsModule, BrokerageModule, TeamModule, ExportsModule, FilesModule, MailModule, CaptureModule, ShareModule, WebsiteModule,
     StateModule, // bootstrap + sync endpoints used by the web app (depends on the modules above)
   ],
   controllers: [HealthController],

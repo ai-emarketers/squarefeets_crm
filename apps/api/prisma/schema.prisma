@@ -307,3 +307,15 @@ model AuditLog {
   @@index([at])
   @@index([target])
 }
+
+// Link between a CRM record and its page on the website (WordPress). ref = "project:<id>" or "property:<id>".
+// Kept in its own table (not in the record's data) so a stale copy of the record sent by the web app can never overwrite it.
+model WebsiteLink {
+  ref       String    @id
+  postId    Int       @default(0) // WordPress post id (0 = never published)
+  url       String    @default("") // public address of the listing
+  published Boolean   @default(false) // true while the listing is live on the website
+  media     Json      @default("{}") // CRM file id -> WordPress media id, so files are uploaded only once
+  syncedAt  DateTime? // last successful push
+  syncedBy  String    @default("") // name of the user who last pushed
+}
