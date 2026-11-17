@@ -398,26 +398,32 @@ const navOk = (n) => (n[0] === 'capture' ? canW('leads') : !n[3] || canR(n[3]));
 // Route -> permission module, used to block screens the role cannot open.
 const ROUTE_MOD = { projects: 'projects', properties: 'properties', leads: 'leads', prospects: 'prospects', requirements: 'requirements', matches: 'requirements', visits: 'visits', followups: 'visits', deals: 'deals', brokerage: 'brokerage', capture: 'leads', team: 'team' };
 
+// Keyword search helpers: every word typed must appear somewhere in the record (any text/number field, or in the extra text given).
+const hay = (o, extra = '') => (Object.values(o || {}).filter((v) => typeof v === 'string' || typeof v === 'number' || (Array.isArray(v) && v.every((x) => typeof x === 'string'))).join(' ') + ' ' + extra).toLowerCase();
+const kw = (h, q) => { const t = String(q || '').toLowerCase().split(/\s+/).filter(Boolean); return t.every((w) => h.includes(w)); };
 // Search box state path + placeholder for each list screen.
-const LISTQ = { projects: ['q.projects', 'Search projects…'], properties: ['q.props', 'Search properties by ID, locality, owner…'], leads: ['q.leads', 'Search leads by name or requirement…'], prospects: ['q.prospects', 'Search prospects…'], deals: ['q.deals', 'Search deals by ID, prospect, property…'], brokerage: ['q.brok', 'Search brokerage by deal, prospect…'] };
+const LISTQ = { projects: ['q.projects', 'Search projects…'], properties: ['q.props', 'Search properties by ID, locality, owner…'], leads: ['q.leads', 'Search leads by name or requirement…'], prospects: ['q.prospects', 'Search prospects…'], deals: ['q.deals', 'Search deals by ID, prospect, property…'], brokerage: ['q.brok', 'Search brokerage by deal, prospect…'], requirements: ['q.reqs', 'Search clients, locality, requirement ID…'], matches: ['q.matches', 'Search a client or requirement…'], visits: ['q.visits', 'Search visits by client, property, status…'], followups: ['q.fus', 'Search follow-ups by name, note, type…'], team: ['q.team', 'Search team by name, role, email…'] };
 // Label of the 'back' link on each detail screen.
 const BACK = { projects: 'Projects', properties: 'Properties', leads: 'Leads', prospects: 'Prospects', requirements: 'Requirements', visits: 'Visits', deals: 'Deals', brokerage: 'Brokerage' };
 // Results of the top-bar global search across projects, properties, leads and prospects.
 function globalResults() {
-  // Global search: nothing is searched until the user has typed something.
+  // Global search: nothing is searched until the user has typed something. Every word must match somewhere in the record.
   const q = (S.q.gs || '').trim().toLowerCase(); if (!q) return [];
   const r = [];
-  S.props.forEach((p) => { if ((p.id + p.title + p.loc).toLowerCase().includes(q)) r.push(['Property', propLabel(p), '#/properties/' + p.id]); });
-  S.projects.forEach((p) => { if (p.name.toLowerCase().includes(q)) r.push(['Project', p.name, '#/projects/' + p.id]); });
-  S.leads.forEach((p) => { if (p.name.toLowerCase().includes(q)) r.push(['Lead', p.name, '#/leads/' + p.id]); });
-  S.prospects.forEach((p) => { if (p.name.toLowerCase().includes(q)) r.push(['Prospect', p.name, '#/prospects/' + p.id]); });
-  S.deals.forEach((d) => { if ((d.id + prosById(d.cid).name).toLowerCase().includes(q)) r.push(['Deal', d.id + ' · ' + prosById(d.cid).name, '#/deals/' + d.id]); });
-  return r.slice(0, 8);
+  S.props.forEach((p) => { if (kw(hay(p), q)) r.push(['Property', propLabel(p), '#/properties/' + p.id]); });
+  S.projects.forEach((p) => { if (kw(hay(p, p.place ? p.place.sub : ''), q)) r.push(['Project', p.name, '#/projects/' + p.id]); });
+  S.leads.forEach((p) => { if (kw(hay(p), q)) r.push(['Lead', p.name, '#/leads/' + p.id]); });
+  S.prospects.forEach((p) => { if (kw(hay(p), q)) r.push(['Prospect', p.name, '#/prospects/' + p.id]); });
+  S.reqs.forEach((x) => { if (kw(reqHay(x), q)) r.push(['Requirement', x.id + ' · ' + reqWho(x), '#/requirements/' + x.id]); });
+  S.visits.forEach((v) => { const pr = propById(v.prop); if (kw(hay(v, (prosById(v.cid) || {}).name + ' ' + (pr ? pr.title + ' ' + pr.loc : '')), q)) r.push(['Visit', v.id + ' · ' + ((prosById(v.cid) || {}).name || '') + ' · ' + (v.when || v.date), '#/visits/' + v.id]); });
+  S.deals.forEach((d) => { if (kw(hay(d, (prosById(d.cid) || {}).name), q)) r.push(['Deal', d.id + ' · ' + ((prosById(d.cid) || {}).name || ''), '#/deals/' + d.id]); });
+  S.team.forEach((t) => { if (kw(hay(t), q)) r.push(['Team', t.name + ' · ' + t.role, '#/team']); });
+  return r.slice(0, 12);
 }
 // App chrome (sidebar, top bar, search, 'New' menu) wrapped around the current screen's body.
 function shell(R, body) {
   const on = R.a; const lq = !R.b && LISTQ[R.a]; const gs = lq ? [] : globalResults();
-  const sp = lq ? lq[0] : 'q.gs'; const sph = lq ? lq[1] : 'Search properties, leads, prospects, deals…';
+  const sp = lq ? lq[0] : 'q.gs'; const sph = lq ? lq[1] : 'Search properties, projects, leads, prospects, requirements, visits, deals…';
   const back = R.b && BACK[R.a] ? `<a class="back" href="#/${R.a}">${ico('back', 16)} ${BACK[R.a]}</a>` : '';
   const navs = NAV.filter(navOk);
   const bn = [['dashboard', 'Home', 'dash'], ['properties', 'Properties', 'prop'], ['leads', 'Leads', 'lead'], ['deals', 'Deals', 'deal']].filter((n) => navOk(NAV.find((m) => m[0] === n[0])));
@@ -641,7 +647,7 @@ const newProspect = () => ({ name: '', phone: '', waSame: true, wa: '', alt: '',
 // Blank lead draft.
 const newLead = () => ({ name: '', phone: '', waSame: true, wa: '', source: 'Direct Reference', portal: '99acres', intent: 'buy', ptype: 'Apartment / Flat', bhk: 3, csub: 'Office', refBy: '', want: '', locality: '', bmin: '', bmax: '', assigned: 'Anil Sharma', notes: '', link: '' });
 // Blank requirement draft.
-const newReq = () => ({ cid: 'c1', purpose: 'sale', type: 'Apartment / Flat', csub: 'Office', locs: ['Salt Lake'], min: '', max: '', bhk: 3, areaType: 'Super built-up', amin: '', amax: '', parking: 'Not needed', lift: 'Yes', floor: 'Any', timeline: 'Immediate', fin: 'Cash', possession: 'Any', furn: 'Any', tenant: 'Any', lease: 'Any', pface: 'Any', road: '', wall: 'Any', notes: '', locNew: '' });
+const newReq = () => ({ cid: 'c1', purpose: 'sale', type: 'Apartment / Flat', csub: 'Office', locs: ['Salt Lake'], min: '', max: '', bhk: 3, areaType: 'Super built-up', amin: '', amax: '', parking: 'Not needed', lift: 'Yes', floor: 'Any', timeline: 'Immediate', fin: 'Cash', possession: 'Any', furn: 'Any', tenant: 'Any', lease: 'Any', pface: 'Any', road: '', wall: 'Any', use: '', pri: 'Normal', src: 'Direct', by: '', notes: '', locNew: '' });
 // Blank deal draft.
 const newDeal = () => ({ cid: 'c1', prop: 'RS001', kind: 'sale', ask: '', bid: '', close: '', opened: iso(today), expected: iso(addDays(today, 30)), leaseStart: iso(addDays(today, 7)), tenure: 11, leaseEnd: leaseEndOf(iso(addDays(today, 7)), 11), depMonths: 2, bType: '%', bBuyer: '1', bOwner: '1', openedBy: (S.team.find((t) => t.name === S.me) || S.team[0]).name, closedBy: (S.team.find((t) => t.name === S.me) || S.team[0]).name, notes: '' });
 // Blank follow-up draft.
@@ -803,7 +809,7 @@ function projectDetail(id) {
 function projectsView() {
   // Filters currently applied to the project list.
   const q = (S.q.projects || '').toLowerCase(); const pf = S.f.projects; const st = S.tab.projStatus || 'all';
-  const rows = S.projects.filter((p) => { const c = unitCounts(p.id); const purposeOk = pf === 'all' || (pf === 'sale' ? (p.sale || c.sale) : (p.rent || c.rent)); return purposeOk && (st === 'all' || p.status === st) && (!q || (p.name + (p.place ? p.place.sub : '')).toLowerCase().includes(q)); });
+  const rows = S.projects.filter((p) => { const c = unitCounts(p.id); const purposeOk = pf === 'all' || (pf === 'sale' ? (p.sale || c.sale) : (p.rent || c.rent)); return purposeOk && (st === 'all' || p.status === st) && (!q || kw(hay(p, p.place ? p.place.sub : ''), q)); });
   const tbl = rows.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Project</th><th>Available for</th><th>Size</th><th>Units listed</th><th>Status</th><th>Expected completion</th>${rowActsTh()}</tr></thead><tbody>${rows.map((p) => { const c = unitCounts(p.id); return `<tr class="lnk" data-href="#/projects/${p.id}"><td><div style="display:flex;gap:10px;align-items:center"><div class="ph" style="width:56px;height:44px;flex:none">${ico('img', 16)}</div><div><a href="#/projects/${p.id}" style="font-weight:600">${esc(p.name)}</a><div class="sub" style="font-size:12px">${esc(p.place ? p.place.sub.split(',').slice(0, 2).join(', ') : '—')}</div></div></div></td><td>${p.sale ? badge('Sale') : ''} ${p.rent ? badge('Rent/Lease', 'blue') : ''}</td><td>${p.size ? esc(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : esc(p.type)}</td><td><b style="color:var(--p)">${c.sale} sale · ${c.rent} rent/lease</b></td><td>${projStatus(p.status)}</td><td class="sub">${esc(projCompl(p) || '—')}</td>${rowActsTd('project', p.id)}</tr>`; }).join('')}</tbody></table></div>` : empty('No projects match', 'A Project is any building or development — even a single standalone house counts as one, containing just one Property.', btn('Add project', { a: 'data-act="newProject"', i: 'plus' }));
   return page('Projects', S.projects.length + ' developments · ' + S.props.filter((p) => p.projectId).length + ' units listed', btn('Add project', { a: 'data-act="newProject"', i: 'plus' }),
     `<div class="head">${searchBox('q.projects', 'Project name, locality')}${purposeSeg('projects')}<div class="chips">${[['all', 'All'], ['ready', 'Ready for operation'], ['uc', 'Under construction']].map((x) => chip(x[1], st === x[0], `data-act="tab" data-k="projStatus" data-v="${x[0]}"`)).join('')}</div></div>${card(tbl, 'flush')}`);
@@ -1014,7 +1020,7 @@ function propertyDetail(id) {
 function propertiesView() {
   // Filters currently applied to the property list.
   const q = (S.q.props || '').toLowerCase(); const pf = S.f.props; const st = S.tab.propStatus || 'all'; const cat = S.tab.propCat || 'all'; const so = S.tab.propSort || 'newest'; const within = Number(S.tab.within) || 0;
-  let rows = S.props.filter((p) => (pf === 'all' || p.purpose === pf) && (cat === 'all' || p.cat === cat) && (st === 'all' || (st === 'done' ? ['Sold', 'Rented/Leased'].includes(p.status) : p.status === st)) && (!q || (p.id + p.title + p.loc + p.owner).toLowerCase().includes(q)) && (!within || (() => { const m = propComplMonths(p); return m !== null && m <= within; })()));
+  let rows = S.props.filter((p) => (pf === 'all' || p.purpose === pf) && (cat === 'all' || p.cat === cat) && (st === 'all' || (st === 'done' ? ['Sold', 'Rented/Leased'].includes(p.status) : p.status === st)) && (!q || kw(hay(p), q)) && (!within || (() => { const m = propComplMonths(p); return m !== null && m <= within; })()));
   // Price used for sorting: sale price, otherwise monthly rent.
   const pv = (p) => (p.purpose === 'sale' ? p.priceL : p.rentK) || 0;
   rows = rows.slice(); if (so === 'newest') rows.reverse(); else if (so === 'price_asc') rows.sort((a, b) => pv(a) - pv(b)); else if (so === 'price_desc') rows.sort((a, b) => pv(b) - pv(a)); else if (so === 'area') rows.sort((a, b) => b.area - a.area);
@@ -1079,7 +1085,7 @@ function findAlerts(p) {
 }
 // Smart-matches screen.
 function matchesView() {
-  const pf = S.f.matches; const all = pendingReqs(); const list = all.filter((r) => pf === 'all' || r.purpose === pf);
+  const pf = S.f.matches; const all = pendingReqs(); const mq = (S.q.matches || '').trim(); const list = all.filter((r) => (pf === 'all' || r.purpose === pf) && (!mq || kw(reqHay(r), mq)));
   if (!list.find((r) => r.id === S.tab.matchReq)) S.tab.matchReq = list[0] ? list[0].id : null;
   const r = list.find((x) => x.id === S.tab.matchReq); const sel = S.tab.matchSel || []; const ms = r ? matchesFor(r) : [];
   // Budget range text for a requirement (sale shows lakhs/crores, rent shows monthly).
@@ -1091,7 +1097,7 @@ function matchesView() {
 // Leads list screen.
 function leadsView() {
   const st = S.f.leads === 'All' || LSTAGES.includes(S.f.leads) ? S.f.leads : 'All'; const q = (S.q.leads || '').toLowerCase(); const pf = S.tab.leadPurpose || 'all';
-  const base = S.leads.filter((l) => (pf === 'all' || (pf === 'sale' ? l.intent === 'buy' : l.intent === 'rent')) && (!q || (l.name + ' ' + l.want + ' ' + (l.budget || '')).toLowerCase().includes(q)));
+  const base = S.leads.filter((l) => (pf === 'all' || (pf === 'sale' ? l.intent === 'buy' : l.intent === 'rent')) && (!q || kw(hay(l), q)));
   const rows = base.filter((l) => st === 'All' || l.stage === st);
   return page('Leads', S.leads.length + ' leads · ' + S.leads.filter((l) => l.stage === 'Lead').length + ' open', (canA('import') ? btn('Import', { k: 'sec', a: 'data-act="importFor" data-k="leads"' }) : '') + btn('Add lead', { i: 'plus', a: 'data-act="openModal" data-m="lead"' }),
     `<div class="head"><label class="search" style="max-width:360px;flex:1">${ico('search', 18)}<input id="lq" data-f="q.leads" data-render="1" value="${esc(S.q.leads || '')}" placeholder="Search by name or requirement" aria-label="Search leads" autocomplete="off"></label><div class="seg">${[['all', 'All'], ['sale', 'Sale'], ['rent', 'Rent/Lease']].map((x) => `<button type="button" class="${pf === x[0] ? 'on' : ''}" data-act="tab" data-k="leadPurpose" data-v="${x[0]}">${x[1]}</button>`).join('')}</div></div>
@@ -1114,7 +1120,7 @@ function leadDetail(id) {
 // Prospects list screen.
 function prospectsView() {
   const st = S.f.prospects; const q = (S.q.prospects || '').toLowerCase();
-  const rows = S.prospects.filter((c) => (st === 'all' || (st === 'nri' ? c.nri : c.type === st)) && (!q || c.name.toLowerCase().includes(q)));
+  const rows = S.prospects.filter((c) => (st === 'all' || (st === 'nri' ? c.nri : c.type === st)) && (!q || kw(hay(c), q)));
   // Count of prospects of one type.
   const cnt = (t) => S.prospects.filter((c) => c.type === t).length;
   return page('Prospects', S.prospects.length + ' prospects · ' + cnt('Buyer') + ' buyers · ' + cnt('Tenant') + ' tenants · ' + cnt('Owner') + ' owners', (canA('import') ? btn('Import', { k: 'sec', a: 'data-act="importFor" data-k="prospects"' }) : '') + btn('Add prospect', { i: 'plus', a: 'data-act="openModal" data-m="prospect"' }),
@@ -1149,21 +1155,49 @@ function prospectProfile(id) {
 }
 
 /* ------------------------------------------------------------ requirements & matches */
-// Requirements list screen.
+// Extra requirement fields kept on the record (stored in the API's flexible JSON column, so no migration is needed).
+const REQ_EXTRA = ['areaType', 'lift', 'floor', 'furn', 'tenant', 'lease', 'possession', 'pface', 'road', 'wall', 'use', 'pri', 'src', 'by'];
+// Text a requirement is searched on: its own fields plus the client's name, phone and email.
+const reqHay = (r) => { const c = prosById(r.cid) || {}; return hay(r, [c.name, c.phone, c.email, r.who].join(' ')); };
+// Budget text of a requirement.
+const reqBudget = (r) => (r.purpose === 'sale' ? fmtL(r.min) + ' – ' + fmtL(r.max) : fmtRent(r.min) + ' – ' + fmtRent(r.max));
+const dash = (v) => (v === undefined || v === null || v === '' || v === '—' ? '—' : esc(String(v)));
+// Requirements list screen: one row per client, with how many requirements they have.
 function reqsView() {
-  const st = S.tab.reqStatus || 'Active'; const pf = S.f.reqs;
-  const rows = S.reqs.filter((r) => (pf === 'all' || r.purpose === pf) && (st === 'all' || r.status === st));
-  return page('Requirements', S.reqs.filter((r) => r.status === 'Active').length + ' active', btn('Add requirement', { i: 'plus', a: 'data-act="newReq"' }),
-    `<div class="head">${purposeSeg('reqs')}<div class="chips">${[['Active', 'Active'], ['On hold', 'On hold'], ['Fulfilled', 'Fulfilled'], ['all', 'All']].map((x) => chip(x[1] + ' ' + S.reqs.filter((r) => (pf === 'all' || r.purpose === pf) && (x[0] === 'all' || r.status === x[0])).length, st === x[0], `data-act="tab" data-k="reqStatus" data-v="${x[0]}"`)).join('')}</div></div>
-    ${card(rows.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Prospect / need</th><th>Location</th><th>Budget</th><th>Matches</th><th>Status</th>${rowActsTh()}</tr></thead><tbody>${rows.map((r) => `<tr class="lnk" data-href="#/requirements/${r.id}"><td><b>${esc(prosById(r.cid).name)}</b><div class="sub" style="font-size:12px">${PURPOSE[r.purpose]} · ${reqHasBhk(r) ? r.bhk + ' BHK ' : ''}${esc(r.type)}</div></td><td>${esc(r.locs.join(', '))}</td><td>${r.purpose === 'sale' ? fmtL(r.min) + '–' + fmtL(r.max) : fmtRent(r.min) + '–' + fmtRent(r.max)}</td><td>${badge(matchesFor(r).length + ' matches', 'ok')}</td><td>${badge(r.status, r.status === 'Active' ? 'ok' : '')}</td>${rowActsTd('req', r.id)}</tr>`).join('')}</tbody></table></div>` : empty('No requirements here', 'Add a requirement to start matching.'), 'flush')}`);
+  const q = (S.q.reqs || '').trim(); const ids = []; S.reqs.forEach((r) => { if (!ids.includes(r.cid)) ids.push(r.cid); });
+  const clients = ids.map((id) => prosById(id)).filter(Boolean);
+  const mine = (c) => S.reqs.filter((r) => r.cid === c.id);
+  const rows = clients.filter((c) => !q || mine(c).some((r) => kw(reqHay(r), q)));
+  const cnt = (s) => S.reqs.filter((r) => r.status === s).length;
+  const tile = (n, l, bg, fg) => `<div style="background:${bg};border-radius:14px;padding:14px 16px"><div style="font-size:26px;font-weight:700;color:${fg}">${n}</div><div class="sub" style="font-weight:500">${l}</div></div>`;
+  const w = canW('requirements');
+  return page('Requirements', 'One row per client, with how many requirements they have.', w ? btn('Add requirement', { i: 'plus', a: 'data-act="newReq"' }) : '',
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">${tile(clients.length, 'Clients', 'var(--line2)', 'var(--text)')}${tile(cnt('Active'), 'Active requirements', 'var(--p-soft)', 'var(--p)')}${tile(cnt('On hold'), 'On hold', 'var(--warn-soft, #fff3d6)', '#7a4e00')}${tile(cnt('Fulfilled'), 'Fulfilled', 'var(--ok-soft)', 'var(--ok)')}</div>
+    ${card(rows.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Client</th><th>Phone</th><th>Requirements</th><th></th></tr></thead><tbody>${rows.map((c) => { const n = mine(c).length; return `<tr class="lnk" data-href="#/requirements/${mine(c)[0].id}"><td data-l="Client"><div style="display:flex;gap:12px;align-items:center"><div class="av">${initials(c.name)}</div><div><b>${esc(c.name)}</b><div class="sub" style="font-size:12px">${esc(c.type)}</div></div></div></td><td data-l="Phone">${esc(maskNum(c.phone))}</td><td data-l="Requirements">${badge(n + (n === 1 ? ' requirement' : ' requirements'), 'blue')}</td><td style="text-align:right" data-l="Actions"><div style="display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${btn('View', { k: 'ghost sm', href: '#/requirements/' + mine(c)[0].id })}${w ? btn('Add requirement for ' + esc(c.name.split(' ')[0]), { k: 'sm', a: `data-act="newReq" data-cid="${c.id}"` }) : ''}</div></td></tr>`; }).join('')}</tbody></table></div>` : empty(q ? 'No client matches “' + esc(q) + '”' : 'No requirements yet', q ? 'Try a name, phone, locality or requirement ID.' : 'Add a requirement to get started.'), 'flush')}`);
 }
-// Requirement detail with its matches.
+// Requirement detail: the client's requirements as tabs, then every detail of the chosen one.
 function reqDetail(id) {
   const r = S.reqs.find((x) => x.id === id); if (!r) return page('Requirement not found', '', '', btn('Back', { href: '#/requirements' }));
-  const c = prosById(r.cid); const ms = matchesFor(r);
-  return page(r.id, 'Requirement · ' + esc(c.name), btn('Open prospect', { k: 'sec', href: '#/prospects/' + c.id }) + btn('View matches', { a: `data-act="setMatchReq" data-id="${r.id}" data-go="matches"` }),
-    `<div class="grid2">${card(`<div style="display:flex;gap:12px;align-items:center"><div class="av" style="width:48px;height:48px">${initials(c.name)}</div><div><h2>${esc(c.name)}</h2><div class="sub">${esc(c.type)} · ${esc(c.phone)}</div></div><div class="grow"></div>${badge(r.status, r.status === 'Active' ? 'ok' : '')}</div>${kv([['Purpose', PURPOSE[r.purpose]], ['Type', esc(r.type)], ['Location', esc(r.locs.join(', '))], ['Budget', r.purpose === 'sale' ? fmtL(r.min) + ' – ' + fmtL(r.max) : fmtRent(r.min) + ' – ' + fmtRent(r.max)], [reqHasBhk(r) ? 'BHK' : 'Type', reqHasBhk(r) ? r.bhk : esc(r.type + (r.csub ? ' · ' + r.csub : ''))], ['Area', esc(r.area)], ['Parking', esc(r.parking)], ['Timeline', esc(r.timeline)], ['Notes', esc(r.notes || '—')]])}`)}
-    ${card(`<h2>${ms.length} matching properties</h2><div class="sub">${ms.length ? 'Best match ' + ms[0].score + '%' : 'Nothing yet'}</div>${btn('View matches', { c: 'full', a: `data-act="setMatchReq" data-id="${r.id}" data-go="matches"` })}${btn('Share options', { k: 'ghost', c: 'full', a: `data-act="openModal" data-m="share" data-ids="${ms.map((m) => m.p.id).join(',')}"` })}`)}${card(docPanel('req:' + r.id, { title: 'Attachments' }))}</div>`);
+  const c = prosById(r.cid) || { id: '', name: '—', type: '', phone: '', email: '' }; const sib = S.reqs.filter((x) => x.cid === r.cid); const w = canW('requirements');
+  const k = reqKind(r); const sale = r.purpose === 'sale'; const res = k === 'flat' || k === 'house';
+  const tabs = sib.map((x) => `<a class="chip${x.id === r.id ? ' on' : ''}" href="#/requirements/${x.id}">${PURPOSE[x.purpose]} · ${esc(reqSpec(x) ? reqSpec(x) + ' ' : '')}${esc(x.type)}</a>`).join('');
+  const sec = (t, rows) => card(`<h2>${t}</h2>${kv(rows)}`);
+  const locs = (r.locs || []).length ? (r.locs || []).map((l) => badge(l)).join(' ') : 'Any area';
+  const stCls = r.status === 'Active' ? 'ok' : r.status === 'On hold' ? 'warn' : '';
+  const sum = `${PURPOSE[r.purpose]} · ${reqSpec(r) ? reqSpec(r) + ' ' : ''}${r.type} · ${(r.locs || []).join(', ') || 'any area'} · ${reqBudget(r)}`;
+  return page(esc(c.name) + ' ' + badge(r.id), esc(c.type) + ' · ' + esc(maskNum(c.phone)), (c.id ? btn('Open prospect', { k: 'sec', href: '#/prospects/' + c.id }) : '') + btn('WhatsApp', { k: 'ghost', i: 'chat', a: 'data-act="toast" data-t="Opening WhatsApp…"' }) + (w ? btn('Add requirement', { i: 'plus', a: `data-act="newReq" data-cid="${r.cid}"` }) : ''),
+    `<div class="chips">${tabs}</div>
+    <div class="grid2"><div class="stack">
+    ${sec('Property', [['Purpose', PURPOSE[r.purpose]], ['Type', esc(r.type)], [k === 'comm' ? 'Commercial type' : res ? 'Bedrooms' : 'Type', k === 'comm' ? dash(r.csub) : res ? (Number(r.bhk) ? r.bhk + ' BHK' : 'Any') : '—'], ['Facing', dash(r.pface)]])}
+    ${sec('Budget and payment', [['Budget', reqBudget(r)], sale ? ['Financing', dash(r.fin)] : ['Lease length', dash(r.lease)], sale ? ['Possession', dash(r.possession)] : ['Tenant type', dash(r.tenant)], r.use ? ['Business use', dash(r.use)] : ['Furnishing', dash(r.furn)]])}
+    ${card(`<h2>Location</h2><div class="chips">${locs}</div>`)}
+    ${sec('Size and preferences', [['Area', dash(r.area)], ['Area measured as', dash(r.areaType)], ['Parking', dash(r.parking)], ['Lift required', dash(r.lift)], ['Floor', dash(r.floor)], ['Furnishing', dash(r.furn)], k === 'plot' ? ['Road width', r.road ? esc(r.road) + ' ft' : '—'] : ['', ''], k === 'plot' ? ['Boundary wall', dash(r.wall)] : ['', '']].filter((x) => x[0]))}
+    ${sec('Timeline', [['Needed', dash(r.timeline)], ['Added on', dash(r.created)]])}
+    </div><div class="stack">
+    ${card(`<h2>Status</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${badge(r.status, stCls)}${badge(r.pri || 'Normal', r.pri === 'Urgent' ? 'err' : r.pri === 'High' ? 'warn' : '')}</div>${kv([['Source', dash(r.src)], ['Handled by', dash(r.by)]])}${w ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`)}
+    ${card(`<h2>Summary</h2><div class="sub">${esc(sum)}</div>`)}
+    ${card(`<h2>Notes</h2><div class="sub">${esc(r.notes || 'No notes yet.')}</div>`)}
+    ${card(docPanel('req:' + r.id, { title: 'Attachments' }))}</div></div>`);
 }
 
 
@@ -1174,7 +1208,7 @@ const VSTYLE = { Scheduled: ['var(--p-soft)', 'var(--p)', 'var(--p-line)'], Conf
 // Calendar grid start/end hours and row height.
 const CAL_H0 = 8, CAL_H1 = 21, RH = 60;
 // Visits after applying the status tab and search filters.
-function visitsFiltered() { const st = S.tab.visitStatus || 'all', pf = S.f.visits; return S.visits.filter((v) => (pf === 'all' || propById(v.prop).purpose === pf) && (st === 'all' || v.status === st)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); }
+function visitsFiltered() { const st = S.tab.visitStatus || 'all', pf = S.f.visits, q = (S.q.visits || '').trim(); return S.visits.filter((v) => (pf === 'all' || propById(v.prop).purpose === pf) && (st === 'all' || v.status === st) && (!q || kw(hay(v, ((prosById(v.cid) || {}).name || '') + ' ' + ((prosById(v.cid) || {}).phone || '') + ' ' + (propById(v.prop) ? propById(v.prop).title + ' ' + propById(v.prop).loc : '')), q))).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); }
 // Arrange overlapping events into side-by-side lanes on the calendar.
 function laneLayout(evs) {
   const out = []; let cl = [], end = 0;
@@ -1233,7 +1267,7 @@ function visitDetail(id) {
 function followupsView() {
   const tab = S.tab.fu || 'today'; const pf = S.f.fus || 'all';
   // Follow-ups for a tab: done ones, or the open ones matching the person filter.
-  const items = (k) => S.fus.filter((f) => (pf === 'all' || f.p === pf) && (k === 'done' ? f.done : !f.done && f.due === k));
+  const fq = (S.q.fus || '').trim(); const items = (k) => S.fus.filter((f) => (pf === 'all' || f.p === pf) && (!fq || kw(hay(f), fq)) && (k === 'done' ? f.done : !f.done && f.due === k));
   const list = items(tab);
   return page('Follow-ups', 'Your personal task list for leads and prospects', btn('Add follow-up', { i: 'plus', a: 'data-act="openModal" data-m="fu"' }),
     `<div class="head">${seg([['all', 'All'], ['sale', 'Sale'], ['rent', 'Rent/Lease']], pf, 'fus')}</div>${tabsBar('fu', [['overdue', 'Overdue ' + items('overdue').length], ['today', 'Today ' + items('today').length], ['upcoming', 'Upcoming ' + items('upcoming').length], ['done', 'Done ' + items('done').length]], tab)}
@@ -2688,8 +2722,12 @@ function reqForm0() {
     <div class="fld"><span class="l">Locality</span>${chipMulti(P + 'locs', locs, d.locs)}<div style="display:flex;gap:8px;max-width:360px"><div class="inp" style="flex:1"><input id="f_d_req_locNew" data-f="d.req.locNew" placeholder="Add locality"></div>${btn('+ Add', { k: 'ghost', a: 'data-act="addLoc"' })}</div></div>
     <div class="row">${fld('Budget min', P + 'min', { suf: unit })}${fld('Budget max', P + 'max', { suf: unit })}</div>
     ${bhk}${area}${fld(plot ? 'Plot facing' : 'Facing / entry', P + 'pface', { opts: ['Any', ...DIRS] })}${prefs}${furn}
-    <div class="fld"><span class="l">Timeline</span>${chipSet(P + 'timeline', ['Immediate', '1–2 months', '3–6 months', 'Just exploring'], d.timeline)}</div>${purposeBlock}${fld('Notes', P + 'notes', { rows: 3 })}</div>`);
+    <div class="fld"><span class="l">Timeline</span>${chipSet(P + 'timeline', ['Immediate', '1–2 months', '3–6 months', 'Just exploring'], d.timeline)}</div>${purposeBlock}${rowOf(fld('Priority', P + 'pri', { opts: ['Normal', 'High', 'Urgent'] }), fld('Source', P + 'src', { opts: ['Direct', 'Referral', '99acres', 'MagicBricks', 'Housing', 'WhatsApp', 'Walk-in'] }), fld('Handled by', P + 'by', { opts: S.team.map((t) => t.name) }))}${fld('Notes', P + 'notes', { rows: 3 })}</div>`);
 }
+Object.assign(ACTS, {
+  // Change a requirement's status (Active / On hold / Fulfilled).
+  setReqStatus(el) { const r = S.reqs.find((x) => x.id === el.dataset.id); if (!r) return; r.status = el.dataset.v; toast('Requirement marked ' + el.dataset.v.toLowerCase()); },
+});
 Object.assign(ACTS, {
   // Set any state path (data-p) to a value (data-v). (later version — overrides the earlier one above)
   setf(el) { setp(S, el.dataset.p, el.dataset.v); afterInput(el.dataset.p, el); render(); },
@@ -2700,8 +2738,9 @@ Object.assign(ACTS, {
     const d = clone(S.d.req); if (!Number(d.max)) { fail({ 'd.req.max': 'Enter a maximum budget.' }); return; }
     const k = reqKind(d); const res = k === 'flat' || k === 'house';
     const extra = []; if (d.furn && d.furn !== 'Any' && k !== 'plot') extra.push(d.furn); if (d.purpose === 'rent' && d.tenant !== 'Any' && res) extra.push(d.tenant); if (d.purpose === 'sale' && d.possession !== 'Any' && k !== 'plot') extra.push(d.possession); if (d.purpose === 'rent' && d.lease !== 'Any') extra.push(d.lease + ' lease'); if (d.pface && d.pface !== 'Any') extra.push(d.pface + ' facing'); if (k === 'plot') { if (d.wall !== 'Any') extra.push('Boundary wall: ' + d.wall); if (d.road) extra.push('Road ≥ ' + d.road + ' ft'); }
-    const r = { id: 'REQ-' + (2037 + S.reqs.length), cid: d.cid, purpose: d.purpose, type: d.type, csub: k === 'comm' ? d.csub : '', locs: d.locs, min: Number(d.min) || 0, max: Number(d.max), bhk: res ? Number(d.bhk) || 0 : 0, amin: Number(d.amin) || 0, amax: Number(d.amax) || 0, area: (d.amin || d.amax) ? `${d.amin || '—'}–${d.amax || '—'} sq ft` + (k === 'plot' ? ' (plot)' : ' (' + d.areaType.toLowerCase() + ')') : 'Any', parking: k === 'plot' ? '—' : d.parking, timeline: d.timeline, status: 'Active', notes: [extra.join(' · '), d.notes].filter(Boolean).join(' — '), fin: d.purpose === 'sale' ? d.fin : '' };
-    S.reqs.push(r); S.tab.matchReq = r.id; S.f.matches = 'all'; S.toast = 'Requirement saved'; go('#/matches'); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200);
+    const r: any = { id: 'REQ-' + (2037 + S.reqs.length), cid: d.cid, purpose: d.purpose, type: d.type, csub: k === 'comm' ? d.csub : '', locs: d.locs, min: Number(d.min) || 0, max: Number(d.max), bhk: res ? Number(d.bhk) || 0 : 0, amin: Number(d.amin) || 0, amax: Number(d.amax) || 0, area: (d.amin || d.amax) ? `${d.amin || '—'}–${d.amax || '—'} sq ft` + (k === 'plot' ? ' (plot)' : ' (' + d.areaType.toLowerCase() + ')') : 'Any', parking: k === 'plot' ? '—' : d.parking, timeline: d.timeline, status: 'Active', notes: [extra.join(' · '), d.notes].filter(Boolean).join(' — '), fin: d.purpose === 'sale' ? d.fin : '', created: iso(today) };
+    REQ_EXTRA.forEach((k) => { r[k] = d[k] === undefined ? '' : d[k]; }); if (!r.by) r.by = ME().name;
+    S.reqs.push(r); S.tab.matchReq = r.id; S.toast = 'Requirement saved'; go('#/requirements/' + r.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2200);
   },
   // Save a follow-up. (later version — overrides the earlier one above)
   saveFu() {
@@ -3257,6 +3296,7 @@ const EDIT_LOAD = {
   req(r) {
     S.d.req = Object.assign(newReq(), { cid: r.cid, purpose: r.purpose, type: r.type, csub: r.csub || 'Office', locs: (r.locs || []).slice(), min: r.min ? String(r.min) : '', max: r.max ? String(r.max) : '', bhk: r.bhk || 3, amin: r.amin ? String(r.amin) : '', amax: r.amax ? String(r.amax) : '', timeline: r.timeline || 'Immediate', fin: r.fin || 'Cash', notes: r.notes || '' });
     if (r.parking && r.parking !== '—') S.d.req.parking = r.parking;
+    REQ_EXTRA.forEach((k) => { if (r[k] !== undefined && r[k] !== '') S.d.req[k] = r[k]; });
     go('#/requirements/new');
   },
   visit(v) { S.d.visit = { cid: v.cid, props: [v.prop], date: v.date, time: v.time, mode: v.mode || 'site', link: v.mode === 'video' ? String(v.notes || '').replace(/^Video call · /, '') : '', meet: String(v.notes || '').startsWith('Meet at ') ? v.notes.slice(8) : '', remind: 'WhatsApp', pin: true }; S.modal = { t: 'visit' }; },
@@ -3427,7 +3467,7 @@ const memberBadge = (st) => badge(st === 'Disabled' || st === 'Inactive' ? 'Deac
 // Team: members table + roles & permissions.
 function teamView() {
   const adm = canW('team'); const own = isOwner(); const meName = ME().name;
-  const members = S.team.map((t) => {
+  const members = S.team.filter((t) => !(S.q.team || '').trim() || kw(hay(t), S.q.team)).map((t) => {
     const isO = t.role === 'Owner'; const locked = isO && !own; const off = t.status === 'Disabled' || t.status === 'Inactive'; const n = esc(t.name);
     const contact = [t.email, t.phone && phoneIn(t.phone) ? t.phone : ''].filter(Boolean).map(esc).join('<br>') || '—';
     const acts = adm && !locked ? [
