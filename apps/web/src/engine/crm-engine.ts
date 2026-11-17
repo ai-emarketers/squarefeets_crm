@@ -487,7 +487,7 @@ const isImg = (f) => /^image\//.test(f.type || '') || /\.(jpe?g|jfif|jpe|png|web
 // Photos of a property/project: cover = the first one that has a picture to show.
 const photosOf = (scope) => filesOf(scope).filter((f) => f.cat === 'Photos' && isImg(f));
 const coverLoading = new Set<string>();
-const coverBox = (scope, h, w, empty) => {
+const coverBox = (scope, h, w, empty, mini?) => {
   const ps = photosOf(scope); const n = ps.length; const sz = `${w ? 'width:' + w + 'px;flex:none;' : ''}height:${h}px`;
   const has = (f) => !!(f && (f.thumb || f.url));
   // The cover is always the first picture; only fall back to a later one if the first can never load.
@@ -496,8 +496,8 @@ const coverBox = (scope, h, w, empty) => {
     if (c.hasBlob) { if (!coverLoading.has(c.id)) { coverLoading.add(c.id); try { ADAPTER.openUrl(c, () => render()); } catch (e) { } } }
     else c = ps.find(has);
   }
-  if (!c || !has(c)) return `<div class="noimg" style="${sz}">${ico('img', 28)}<span>${c && c.hasBlob ? 'Loading photo…' : 'No image'}</span></div>`;
-  return `<div class="noimg has" style="${sz}"><img src="${c.thumb || c.url}" alt="Cover photo" onerror="this.parentNode.classList.remove('has');this.outerHTML='<span>No image</span>'" style="width:100%;height:100%;object-fit:cover">${n > 1 ? `<span class="badge" style="position:absolute;right:8px;bottom:8px">${n} photos</span>` : ''}</div>`;
+  if (!c || !has(c)) return `<div class="noimg${mini ? ' mini' : ''}" style="${sz}">${ico('img', mini ? 16 : 28)}<span>${c && c.hasBlob ? (mini ? '…' : 'Loading photo…') : 'No image'}</span></div>`;
+  return `<div class="noimg has${mini ? ' mini' : ''}" style="${sz}"><img src="${c.thumb || c.url}" alt="Cover photo" onerror="this.parentNode.classList.remove('has');this.outerHTML='<span>No image</span>'" style="width:100%;height:100%;object-fit:cover">${n > 1 && !mini ? `<span class="badge" style="position:absolute;right:8px;bottom:8px">${n} photos</span>` : ''}</div>`;
 };
 // Can documents of this scope type be shared externally?
 const canShare = (t) => ['prop', 'proj', 'deal'].includes(t);
@@ -842,7 +842,7 @@ function projectsView() {
   // Filters currently applied to the project list.
   const q = (S.q.projects || '').toLowerCase(); const pf = S.f.projects; const st = S.tab.projStatus || 'all';
   const rows = S.projects.filter((p) => { const c = unitCounts(p.id); const purposeOk = pf === 'all' || (pf === 'sale' ? (p.sale || c.sale) : (p.rent || c.rent)); return purposeOk && (st === 'all' || p.status === st) && (!q || kw(hay(p, (p.place ? p.place.sub : '') + ' ' + S.props.filter((u) => u.projectId === p.id).map((u) => u.title + ' ' + u.loc).join(' ')), q)); });
-  const tbl = rows.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Project</th><th>Available for</th><th>Size</th><th>Units listed</th><th>Status</th><th>Expected completion</th>${rowActsTh()}</tr></thead><tbody>${rows.map((p) => { const c = unitCounts(p.id); return `<tr class="lnk" data-href="#/projects/${p.id}"><td><div style="display:flex;gap:10px;align-items:center"><div class="ph" style="width:56px;height:44px;flex:none">${ico('img', 16)}</div><div><a href="#/projects/${p.id}" style="font-weight:600">${esc(p.name)}</a><div class="sub" style="font-size:12px">${esc(p.place ? p.place.sub.split(',').slice(0, 2).join(', ') : '—')}</div></div></div></td><td>${p.sale ? badge('Sale') : ''} ${p.rent ? badge('Rent/Lease', 'blue') : ''}</td><td>${p.size ? esc(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : esc(p.type)}</td><td><b style="color:var(--p)">${c.sale} sale · ${c.rent} rent/lease</b></td><td>${projStatus(p.status)}</td><td class="sub">${esc(projCompl(p) || '—')}</td>${rowActsTd('project', p.id)}</tr>`; }).join('')}</tbody></table></div>` : empty('No projects match', 'A Project is any building or development — even a single standalone house counts as one, containing just one Property.', btn('Add project', { a: 'data-act="newProject"', i: 'plus' }));
+  const tbl = rows.length ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Project</th><th>Available for</th><th>Size</th><th>Units listed</th><th>Status</th><th>Expected completion</th>${rowActsTh()}</tr></thead><tbody>${rows.map((p) => { const c = unitCounts(p.id); return `<tr class="lnk" data-href="#/projects/${p.id}"><td><div style="display:flex;gap:10px;align-items:center">${coverBox('proj:' + p.id, 44, 56, '', true)}<div><a href="#/projects/${p.id}" style="font-weight:600">${esc(p.name)}</a><div class="sub" style="font-size:12px">${esc(p.place ? p.place.sub.split(',').slice(0, 2).join(', ') : '—')}</div></div></div></td><td>${p.sale ? badge('Sale') : ''} ${p.rent ? badge('Rent/Lease', 'blue') : ''}</td><td>${p.size ? esc(p.size + (p.sizeUnit ? ' ' + p.sizeUnit : '')) : esc(p.type)}</td><td><b style="color:var(--p)">${c.sale} sale · ${c.rent} rent/lease</b></td><td>${projStatus(p.status)}</td><td class="sub">${esc(projCompl(p) || '—')}</td>${rowActsTd('project', p.id)}</tr>`; }).join('')}</tbody></table></div>` : empty('No projects match', 'A Project is any building or development — even a single standalone house counts as one, containing just one Property.', btn('Add project', { a: 'data-act="newProject"', i: 'plus' }));
   return page('Projects', S.projects.length + ' developments · ' + S.props.filter((p) => p.projectId).length + ' units listed', btn('Add project', { a: 'data-act="newProject"', i: 'plus' }),
     `<div class="head">${searchBox('q.projects', 'Project name, locality')}${purposeSeg('projects')}<div class="chips">${[['all', 'All'], ['ready', 'Ready for operation'], ['uc', 'Under construction']].map((x) => chip(x[1], st === x[0], `data-act="tab" data-k="projStatus" data-v="${x[0]}"`)).join('')}</div></div>${card(tbl, 'flush')}`);
 }
