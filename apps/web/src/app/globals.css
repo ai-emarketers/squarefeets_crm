@@ -454,3 +454,5 @@ textarea{border:1px solid var(--field);border-radius:var(--rs);padding:12px;back
 .noimg.mini{gap:0;font-size:9px;line-height:1.1;border-radius:6px;text-align:center;padding:0 2px}
 .noimg.mini.has{padding:0}
 .noimg.mini span{display:block}
+.kvg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 16px}
+.kvg b{display:block;font-weight:600;word-break:break-word}

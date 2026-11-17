@@ -1192,7 +1192,7 @@ const REQ_EXTRA = ['areaType', 'lift', 'floor', 'furn', 'tenant', 'lease', 'poss
 // Text a requirement is searched on: its own fields plus the client's name, phone and email.
 const reqHay = (r) => { const c = prosById(r.cid) || {}; return hay(r, [c.name, c.phone, c.email, r.who].join(' ')); };
 // Budget text of a requirement.
-const reqBudget = (r) => (r.purpose === 'sale' ? fmtL(r.min) + ' – ' + fmtL(r.max) : fmtRent(r.min) + ' – ' + fmtRent(r.max));
+const reqBudget = (r) => { const f = r.purpose === 'sale' ? fmtL : fmtRent; const lo = Number(r.min) || 0; const hi = Number(r.max) || 0; const open = !hi || hi >= 1000000; if (!lo && open) return 'Any budget'; if (!lo) return 'Up to ' + f(hi); if (open) return 'From ' + f(lo); return f(lo) + ' – ' + f(hi); };
 const dash = (v) => (v === undefined || v === null || v === '' || v === '—' ? '—' : esc(String(v)));
 // Requirements list screen: one row per client, with how many requirements they have.
 function reqsView() {
@@ -1213,7 +1213,7 @@ function reqDetail(id) {
   const c = prosById(r.cid) || { id: '', name: '—', type: '', phone: '', email: '' }; const sib = S.reqs.filter((x) => x.cid === r.cid); const w = canW('requirements');
   const k = reqKind(r); const sale = r.purpose === 'sale'; const res = k === 'flat' || k === 'house';
   const tabs = sib.map((x) => `<a class="chip${x.id === r.id ? ' on' : ''}" href="#/requirements/${x.id}">${PURPOSE[x.purpose]} · ${esc(reqSpec(x) ? reqSpec(x) + ' ' : '')}${esc(x.type)}</a>`).join('');
-  const sec = (t, rows) => { rows = rows.filter((x) => x[1] !== '—' && x[1] !== undefined && x[1] !== ''); return rows.length ? card(`<h2>${t}</h2>${kv(rows)}`) : ''; };
+  const sec = (t, rows) => { rows = rows.filter((x) => x[1] !== '—' && x[1] !== undefined && x[1] !== ''); return rows.length ? card(`<h2>${t}</h2><div class="kvg">${rows.map((x) => `<div><div class="sub" style="font-size:12px">${x[0]}</div><b>${x[1]}</b></div>`).join('')}</div>`) : ''; };
   const locs = (r.locs || []).length ? (r.locs || []).map((l) => badge(l)).join(' ') : 'Any area';
   const stCls = r.status === 'Active' ? 'ok' : r.status === 'On hold' ? 'warn' : '';
   const sum = `${PURPOSE[r.purpose]} · ${reqSpec(r) ? reqSpec(r) + ' ' : ''}${r.type} · ${(r.locs || []).join(', ') || 'any area'} · ${reqBudget(r)}`;
@@ -1226,7 +1226,7 @@ function reqDetail(id) {
     ${sec('Size and preferences', [['Area', dash(r.area)], ['Area measured as', dash(r.areaType)], ['Parking', dash(r.parking)], ['Lift required', dash(r.lift)], ['Floor', dash(r.floor)], ['Furnishing', dash(r.furn)], k === 'plot' ? ['Road width', r.road ? esc(r.road) + ' ft' : '—'] : ['', ''], k === 'plot' ? ['Boundary wall', dash(r.wall)] : ['', '']].filter((x) => x[0]))}
     ${sec('Timeline', [['Needed', dash(r.timeline)], ['Added on', dash(r.created)]])}
     </div><div class="stack">
-    ${card(`<h2>Status</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${badge(r.status, stCls)}${badge(r.pri || 'Normal', r.pri === 'Urgent' ? 'err' : r.pri === 'High' ? 'warn' : '')}</div>${kv([['Source', dash(r.src)], ['Handled by', dash(r.by)]])}${w ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`)}
+    ${card(`<h2>Status</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${badge(r.status, stCls)}${badge((r.pri || 'Normal') + ' priority', r.pri === 'Urgent' ? 'err' : r.pri === 'High' ? 'warn' : '')}</div><div class="kvg">${[['Source', dash(r.src)], ['Handled by', dash(r.by)]].filter((x) => x[1] !== '—').map((x) => `<div><div class="sub" style="font-size:12px">${x[0]}</div><b>${x[1]}</b></div>`).join('')}</div>${w ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`)}
     ${card(`<h2>Summary</h2><div class="sub">${esc(sum)}</div>`)}
     ${card(`<h2>Notes</h2><div class="sub">${esc(r.notes || 'No notes yet.')}</div>`)}
     ${card(docPanel('req:' + r.id, { title: 'Attachments' }))}</div></div>`);
