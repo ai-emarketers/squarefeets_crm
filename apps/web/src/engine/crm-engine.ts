@@ -621,11 +621,9 @@ function docSimple(scope) {
   const fs = filesOf(scope); const req = requiredDocs(scope); const miss = req.filter((c) => !haveDoc(scope, c));
   const rows = fs.map((f, i) => ({ f, i })).reverse();
   const list = rows.map(({ f, i }) => `<div class="li" style="padding:10px 4px;min-height:56px"><button type="button" class="docthumb" data-act="docPreview" data-scope="${scope}" data-i="${i}" aria-label="Preview ${esc(f.name)}">${f.thumb ? `<img src="${f.thumb}" alt="" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover">` : fileIcon(f)}</button><div class="grow" style="min-width:150px"><b style="font-size:14px;word-break:break-word">${esc(f.name)}</b><div class="sub" style="font-size:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${badge(f.cat)}<span>${fmtSize(f.size)} · ${esc(dayLbl(parseISO(f.at)))}</span>${EXPIRY_CATS.includes(f.cat) ? `<label style="display:inline-flex;align-items:center;gap:6px">Valid till<span class="inp" style="height:30px;width:140px"><input type="date" data-f="files.${scope}.${i}.valid" data-render="1" value="${esc(f.valid)}" style="padding:0 6px;font-size:12px"></span></label>${expiryBadge(f.valid)}` : ''}</div></div>${docStatusBadge(f.st)}${canShare(t) ? chk(f.share, shareLabel(t), `data-act="docShareTog" data-scope="${scope}" data-i="${i}"`) : ''}${f.st !== 'Verified' ? btn('Verify', { k: 'sec sm', a: `data-act="docVerify" data-scope="${scope}" data-i="${i}"` }) : ''}<button type="button" class="btn sec sm" data-act="docDel" data-scope="${scope}" data-i="${i}" aria-label="Remove ${esc(f.name)}">Remove</button></div>`).join('');
-  return `<div style="display:flex;flex-direction:column;gap:12px" data-drop="${scope}"><div class="head"><h2>Documents</h2>${badge(fs.length + ' file' + (fs.length === 1 ? '' : 's'))}<div class="grow"></div></div><div class="sub" style="font-size:12px;margin-top:-6px">${DOC_NOTE[t]}</div>
-  <div class="row" style="align-items:flex-end;gap:10px">${fld('Document type', key, { opts: cats, rer: 1, style: 'flex:2;min-width:220px' })}<div style="flex:1;min-width:160px;display:flex;gap:8px"><label class="btn ${fs.length ? 'sec' : ''}" style="cursor:pointer;flex:1">${ico('upload', 16)}${fs.length ? 'Add more' : 'Choose files'}<input type="file" multiple hidden data-upload="${scope}" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx,.csv,.txt"></label></div></div>
-  <div class="sub" style="font-size:12px;margin-top:-4px">Pick the type, then choose one or more files — or drop files here. Change the type and add more whenever you need.</div>
+  return `<div style="display:flex;flex-direction:column;gap:8px" data-drop="${scope}"><div class="head docrow"><h2>Documents</h2>${badge(String(fs.length))}<div class="grow"></div>${fld('', key, { opts: cats, rer: 1, aria: 'Document type', style: 'width:170px;flex:none' })}<label class="btn sec sm" style="cursor:pointer">${ico('upload', 16)}Upload<input type="file" multiple hidden data-upload="${scope}" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx,.csv,.txt"></label></div><div class="sub" style="font-size:12px;margin-top:-4px">${DOC_NOTE[t]}</div>
   ${miss.length ? `<div class="chips" style="gap:6px;align-items:center"><span class="sub" style="font-size:12px">Still needed:</span>${miss.map((c) => `<button type="button" class="badge warn" style="cursor:pointer" data-act="setf" data-p="${key}" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : req.length ? `<div class="note ok">${ico('check', 18)}<div>All the usual papers for this record are on file.</div></div>` : ''}
-  ${fs.length ? `<div class="list" style="border:1px solid var(--line);border-radius:10px;padding:0 10px">${list}</div>` : '<div class="sub" style="padding:8px 0">No documents yet. Everything here is optional — add what you have.</div>'}</div>`;
+  ${fs.length ? `<div class="list" style="border:1px solid var(--line);border-radius:10px;padding:0 10px">${list}</div>` : '<div class="sub" style="font-size:12px">No documents yet. Drop files here or use Upload.</div>'}</div>`;
 }
 // Deal document vault: required-documents checklist, party requests and uploads.
 function docVault(scope) {
@@ -651,9 +649,9 @@ function docVault(scope) {
 /* ------------------------------------------------------------ drafts */
 /* Blank 'new record' drafts for the forms. */
 // Blank project draft for the add-project form.
-const newProject = () => ({ name: '', dev: '', type: 'Residential Complex', rera: '', status: 'uc', cm: '', cy: '', complete: '', size: '', sizeUnit: '', towers: '', units: '', configs: [], sale: true, rent: true, saleFrom: '', saleTo: '', rentFrom: '', rentTo: '', place: null, addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal' }, amenities: [], customAmen: [], brochure: '', photoList: [], layouts: [], charges: [], chargeArea: '1450', ai: null });
+const newProject = () => ({ name: '', dev: '', type: 'Residential Complex', rera: '', status: 'uc', cm: '', cy: '', complete: '', size: '', sizeUnit: '', towers: '', units: '', configs: [], sale: true, rent: true, saleFrom: '', saleTo: '', rentFrom: '', rentTo: '', place: null, addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal' }, amenities: [], customAmen: [], brochure: '', photoList: [], layouts: [], charges: [], chargeArea: '1450', ai: null, web: {} });
 // Blank property draft for the add-property form.
-const newProperty = () => ({ purpose: 'sale', cat: 'Residential', sub: 'Flat / Apartment', projectId: null, src: { owner: true, broker: false, portal: false }, owner: { name: '', mobile: '', waSame: true, wa: '', email: '' }, broker: { name: '', company: '', phone: '', waSame: true, wa: '', email: '', groups: [], gNew: '' }, portal: { name: '99acres', pid: '', url: '', by: '' }, ref: '', addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal', flat: '' }, place: null, bhk: 3, baths: '2', carpet: '', sbu: '', extras: { balcony: false, utility: false, terrace: false, helper: false }, extraArea: '', buRatio: '', sbuRatio: '', facing: 'East', openSides: [], overlook: [], features: [], fNew: '', furn: 'Semi-furnished', cYear: '', cMonth: '', floor: '', totalFloors: '', price: '', quoted: '', maint: '', parkCost: '', brokerage: '', rent: '', deposit: '', charges: [], pstatus: 'Ready for Possession', cm: '', cy: '', pcount: 1, ptype: 'Covered', photoList: [], olNew: '', washrooms: '', seats: '', frontage: '', ceilHt: '', docks: '', powerKva: '', plotL: '', plotW: '', road: '', wall: 'Yes', corner: false, landUse: 'Residential', plotArea: '', balconies: '', lift: 'Yes', availFrom: '', tenants: [], lockin: '', negotiable: false, tenure: 'Freehold', gstOn: false });
+const newProperty = () => ({ purpose: 'sale', cat: 'Residential', sub: 'Flat / Apartment', projectId: null, src: { owner: true, broker: false, portal: false }, owner: { name: '', mobile: '', waSame: true, wa: '', email: '' }, broker: { name: '', company: '', phone: '', waSame: true, wa: '', email: '', groups: [], gNew: '' }, portal: { name: '99acres', pid: '', url: '', by: '' }, ref: '', addr: { tower: '', street: '', landmark: '', pin: '', city: 'Kolkata', state: 'West Bengal', flat: '' }, place: null, bhk: 3, baths: '2', carpet: '', sbu: '', extras: { balcony: false, utility: false, terrace: false, helper: false }, extraArea: '', buRatio: '', sbuRatio: '', facing: 'East', openSides: [], overlook: [], features: [], fNew: '', furn: 'Semi-furnished', cYear: '', cMonth: '', floor: '', totalFloors: '', price: '', quoted: '', maint: '', parkCost: '', brokerage: '', rent: '', deposit: '', charges: [], pstatus: 'Ready for Possession', cm: '', cy: '', pcount: 1, ptype: 'Covered', photoList: [], olNew: '', washrooms: '', seats: '', frontage: '', ceilHt: '', docks: '', powerKva: '', plotL: '', plotW: '', road: '', wall: 'Yes', corner: false, landUse: 'Residential', plotArea: '', balconies: '', lift: 'Yes', availFrom: '', tenants: [], lockin: '', negotiable: false, tenure: 'Freehold', gstOn: false, web: {} });
 // Blank prospect draft.
 const newProspect = () => ({ name: '', phone: '', waSame: true, wa: '', alt: '', email: '', type: 'Buyer', city: 'Kolkata', source: '99acres', lang: 'English', nri: false, contact: 'Call', assigned: 'Anil Sharma', notes: '', link: '', country: '', tz: 'GMT+4 · Gulf', bestTime: '', refBy: '', enqId: '' });
 // Blank lead draft.
@@ -791,6 +789,42 @@ function chargesCard(d, edit) {
   ${d.charges.length ? `<div class="card" style="background:var(--bg);gap:6px"><div class="row" style="align-items:flex-end">${fld('Check the amounts for a unit of', 'd.project.chargeArea', { suf: 'sq ft', rer: 1, style: 'max-width:220px' })}</div>${kv(d.charges.map((c) => [esc(c.name) + (chargeLive(c) ? '' : ' <span class="sub">(from ' + esc(dateTxt(c.from)) + ')</span>'), inr(chargeAmt(c, d.chargeArea))]))}</div>` : ''}`);
 }
 // Add/edit project form (all sections).
+/* ---- website: content fields and the publish panel (photos use the shared photo upload: category "Photos") ---- */
+// The editable "Website content" fields (what visitors see besides the CRM's own details). Lists are typed one per line.
+function webFields(w) {
+  const d = S.d[w]; d.web = d.web || {}; const P = 'd.' + w + '.web.';
+  return `<div class="sub" style="margin-top:-6px">Shown on squarefeetsrealty.com when this is published. Everything here is optional.</div>
+    ${chk(!!d.web.featured, 'Featured (shown on the homepage and sorted first)', `data-act="togb" data-p="${P}featured"`)}
+    <div class="row">${fld('Price label', P + 'priceLabel', { ph: '₹87 Lakh onwards', hint: 'Leave empty to format the price automatically' })}${fld('Price note', P + 'priceNote', { ph: '≈ ₹9,460 / sq ft · 2/3/4 BHK' })}</div>
+    ${fld('Short summary', P + 'summary', { rows: 2, hint: 'One or two lines shown on listing cards' })}
+    ${fld('Description', P + 'description', { rows: 6, hint: 'Separate paragraphs with a blank line' })}
+    <div class="row">${fld('Floors', P + 'floors', { ph: 'G + 11' })}${fld('Best for', P + 'bestFor', { ph: 'End-users and long-hold investors' })}${fld('Score out of 10', P + 'sfScore', { ph: '7.8' })}</div>
+    ${fld('360° virtual tour link', P + 'virtualTour', { ph: 'https://' })}
+    <div class="row">${fld('Strengths', P + 'strengths', { rows: 4, hint: 'One point per line' })}${fld('Consider carefully', P + 'considerations', { rows: 4, hint: 'One point per line' })}</div>
+    ${fld('Nearby places', P + 'nearby', { rows: 4, hint: 'One per line: Place | distance, e.g. Phoolbagan Metro | 800 m · 3 min drive' })}
+    ${fld('Client reviews', P + 'reviews', { rows: 3, hint: 'Only genuine reviews. One per line: Name | stars 1-5 | review' })}`;
+}
+const webCard = (w) => card(`<h2>Website content</h2>${webFields(w)}`);
+// Link status for a record, fetched once per page visit and kept in S.webLink (never saved to the server).
+function webFetch(kind, id) {
+  const ref = kind + ':' + id;
+  ADAPTER.api?.('/website/' + kind + 's/' + encodeURIComponent(id)).then((r) => { S.webLink[ref] = r; render(); }).catch(() => { S.webLink[ref] = { error: true }; render(); });
+}
+// "Website" card on a project or property detail page: publish, update and take down.
+function webPanel(kind, id, canWrite, status, inProject) {
+  const T = (inner) => card(`<h2>Website</h2>${inner}`);
+  if (inProject) return T('<div class="sub">Units inside a project appear on the project page. Publish the project to show them on the website.</div>');
+  if (status === 'Draft') return T('<div class="sub">Save this as a listing (not a draft) before publishing it to the website.</div>');
+  S.webLink = S.webLink || {}; const ref = kind + ':' + id; let l = S.webLink[ref];
+  if (!l) { l = S.webLink[ref] = { loading: true }; webFetch(kind, id); }
+  if (l.loading) return T('<div class="sub">Checking…</div>');
+  if (l.error) return T('<div class="sub">Could not check the website status.</div>');
+  if (!l.configured) return T('<div class="sub">The website connection is not set up yet. Ask the admin to add the WordPress settings.</div>');
+  const a = `data-kind="${kind}" data-id="${id}"`; const busy = l.busy ? ' disabled' : '';
+  const when = l.syncedAt ? 'Last sent ' + new Date(l.syncedAt).toLocaleString('en-IN') + (l.syncedBy ? ' by ' + esc(l.syncedBy) : '') : '';
+  if (l.published) return T(`<div class="chips">${badge('Live on website', 'ok')}</div>${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:var(--p)">View on website</a>` : ''}<div class="sub" style="font-size:12px">${when}</div>${canWrite ? `<div class="row" style="gap:8px">${btn(l.busy ? 'Working…' : 'Update website', { k: 'sec', a: `data-act="webPublish" ${a}${busy}` })}${btn('Take off website', { k: 'ghost', a: `data-act="webUnpublish" ${a}${busy}` })}</div><div class="sub" style="font-size:12px">After editing here, press Update website to send the changes.</div>` : ''}`);
+  return T(`<div class="sub">Not on the website${l.postId ? ' (taken down)' : ''}. ${when}</div>${canWrite ? btn(l.busy ? 'Publishing…' : 'Publish to website', { i: 'upload', a: `data-act="webPublish" ${a}${busy}` }) : ''}`);
+}
 function projectForm(edit) {
   const d = S.d.project; const P = 'd.project.'; d.layouts = d.layouts || []; d.charges = d.charges || []; d.photoList = d.photoList || []; d.customAmen = d.customAmen || [];
   const years = Array.from({ length: 10 }, (_, i) => String(today.getFullYear() + i));
@@ -803,7 +837,7 @@ function projectForm(edit) {
     card(`<h2>Price range <span class="sub" style="font-weight:400">(optional)</span></h2>${d.sale ? `<div class="row">${fld('Sale price from', P + 'saleFrom', { pre: '₹', ph: '68 L' })}${fld('Sale price to', P + 'saleTo', { pre: '₹', ph: '1.5 Cr' })}</div>` : ''}${d.rent ? `<div class="row">${fld('Rent/Lease from', P + 'rentFrom', { pre: '₹', suf: '/mo' })}${fld('Rent/Lease to', P + 'rentTo', { pre: '₹', suf: '/mo' })}</div>` : ''}${!d.sale && !d.rent ? '<div class="sub">Choose Sale and/or Rent/Lease under “Available for”.</div>' : ''}`),
     card(`<div class="head"><h2>Brochure</h2><div class="grow"></div><span class="badge" style="display:inline-flex;gap:4px;align-items:center;color:var(--brand,#6d4aff)">${ico('sparkle', 14)} AI fill</span></div>${d.brochure ? '' : `<div class="note">${ico('sparkle', 18)}<div><b>Save typing: let AI fill this form</b><div class="sub" style="font-size:12px">Upload the project brochure as a PDF and AI will read the name, developer, RERA, configurations, prices, amenities and layouts for you. You review every field before it is applied.</div></div></div>`}<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">${ico(d.brochure ? 'upload' : 'sparkle', 16)}${d.brochure ? 'Replace brochure' : 'Upload brochure (PDF) to fill with AI'}<input type="file" hidden data-brochure="project" accept=".pdf,.jpg,.jpeg,.png"></label>${d.brochure ? `<span>${ico('file', 18)} ${esc(d.brochure)}</span>` : ''}</div>${aiCard(d)}`),
     card(`<h2>Photos</h2><div class="sub" style="margin-top:-6px">Photos are kept apart from brochures and documents.</div><div class="chips">${d.photoList.map((x, i) => `<div class="ph" style="width:110px;height:84px;position:relative;flex-direction:column;font-size:11px;padding:4px;text-align:center;word-break:break-all">${ico('img', 18)}${esc(x.name.slice(0, 18))}<button type="button" class="fx" data-act="photoRm" data-w="project" data-i="${i}" aria-label="Remove photo" style="position:absolute;top:2px;right:2px">×</button></div>`).join('')}<label class="btn ghost" style="cursor:pointer">${ico('plus', 16)}Add photos<input type="file" multiple hidden data-photos="project" accept="image/*"></label></div>`),
-    layoutsCard(d), chargesCard(d, edit),
+    layoutsCard(d), chargesCard(d, edit), webCard('project'),
     card(docPanel('proj:__draft', { title: 'Project documents' }))
   ].join('');
   // Sale / Rent / Both toggle chips.
@@ -833,7 +867,7 @@ function projectDetail(id) {
     ${card(`<h2>Overview</h2>${overview}`)}${card(`<h2>Layouts &amp; configurations</h2>${lay}`)}${chg}
     ${card(docPanel('proj:' + p.id, { title: 'Project documents' }))}
     ${card(`<div class="head"><h2>Properties in this project</h2></div>${tabsBar('projUnits', [['all', 'All ' + S.props.filter((u) => u.projectId === p.id).length], ['sale', 'Sale ' + c.sale], ['rent', 'Rent/Lease ' + c.rent]], tab)}<div style="margin:0 calc(var(--pad)*-1) calc(var(--pad)*-1)">${ut}</div>`)}</div>
-    <div class="stack">${card(`<h2>Location</h2>${ph(170, 'Map preview')}<div class="sub">${p.place ? esc(p.place.sub) : ''}</div><div class="row" style="gap:8px">${btn('Open in Maps', { k: 'sec', c: 'full', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}</div>`)}
+    <div class="stack">${webPanel('project', p.id, canW('projects'), '', false)}${card(`<h2>Location</h2>${ph(170, 'Map preview')}<div class="sub">${p.place ? esc(p.place.sub) : ''}</div><div class="row" style="gap:8px">${btn('Open in Maps', { k: 'sec', c: 'full', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}</div>`)}
     ${card(`<div class="head"><h2>Amenities</h2><div class="grow"></div><button type="button" class="btn sm ghost" data-act="editProject" data-id="${p.id}" data-go="amenities">Edit</button></div><div class="chips">${am.map((a) => chip(esc(a.label), false, 'disabled')).join('')}${(p.customAmen || []).map((a) => chip(esc(a), false, 'disabled')).join('')}${!am.length && !(p.customAmen || []).length ? '<span class="sub">None yet</span>' : ''}</div>`)}
     ${card(`<h2>Brochure</h2>${p.brochure ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${ico('file', 22)}<div class="grow"><b>${esc(p.brochure)}</b></div>${btn('Download', { k: 'sec sm', a: 'data-act="toast" data-t="Download starts in the live product"' })}</div>` : '<div class="sub">No brochure uploaded.</div>'}`)}</div></div>`);
 }
@@ -983,7 +1017,7 @@ function sourceTab(d) {
 // Add/edit property form: dynamic fields follow category and type.
 function propertyForm(edit) {
   const d = S.d.property; const P = 'd.property.'; const t = S.tab.pf || 0;
-  const tabs = ['Source', 'Category & location', 'Specifications', 'Price', 'Status & documents', 'Photos'];
+  const tabs = ['Source', 'Category & location', 'Specifications', 'Price', 'Status & documents', 'Photos', 'Website'];
   const pr = d.projectId ? projById(d.projectId) : null; const q = (S.pq.q || '').toLowerCase(); const pm = S.projects.filter((p) => !q || p.name.toLowerCase().includes(q));
   const years = Array.from({ length: 46 }, (_, i) => String(today.getFullYear() + 5 - i));
   const land = d.cat === 'Land'; const res = d.cat === 'Residential';
@@ -1022,7 +1056,7 @@ function propertyForm(edit) {
     ${d.pstatus !== 'Ready for Possession' ? `<div class="row" style="max-width:420px">${fld('Expected completion — month', P + 'cm', { opts: [['', 'Select month'], ...MONTHS3] })}${fld('Year', P + 'cy', { opts: [['', 'Select year'], ...Array.from({ length: 8 }, (_, i) => String(today.getFullYear() + i))] })}</div>` : ''}
     <div class="card" style="background:var(--bg)">${docPanel('prop:__draft', {})}</div>`;
   const s5 = `<div class="chips">${d.photoList.map((x, i) => `<div class="ph" style="width:120px;height:96px;position:relative;flex-direction:column;font-size:11px;padding:4px;text-align:center;word-break:break-all">${ico('img', 18)}${i === 0 ? '<b>Cover</b>' : ''}${esc(x.name.slice(0, 18))}<button type="button" class="fx" data-act="photoRm" data-w="property" data-i="${i}" aria-label="Remove photo" style="position:absolute;top:2px;right:2px">×</button></div>`).join('')}</div><label class="btn ghost" style="cursor:pointer;align-self:flex-start">${ico('upload', 16)}Add photos<input type="file" multiple hidden data-photos="property" accept="image/*"></label><div class="sub">Photos are kept apart from documents. The first photo is the cover.</div>`;
-  const secs = [sourceTab(d), s1, s2, s3 + s3b, s4, s5]; const last = t === tabs.length - 1;
+  const secs = [sourceTab(d), s1, s2, s3 + s3b, s4, s5, webFields('property')]; const last = t === tabs.length - 1;
   return page(edit ? 'Edit property' : 'Add property', 'The same form is used to create and to edit', btn('Cancel', { k: 'sec', href: edit ? '#/properties/' + S.d.propEditId : '#/properties' }) + btn('Save draft', { k: 'ghost', a: 'data-act="saveProperty" data-draft="1"' }) + btn(edit ? 'Save changes' : 'Save property', { a: 'data-act="saveProperty"' }),
     `<div class="card"><div class="tabs" role="tablist">${tabs.map((x, i) => `<button type="button" role="tab" class="${t === i ? 'on' : ''}" data-act="pfTab" data-i="${i}">${i + 1}. ${x}</button>`).join('')}</div><h2>${tabs[t]}</h2>${secs[t]}<div class="head" style="border-top:1px solid var(--line);padding-top:14px"><div class="sub">Property ID is generated on save. Save as draft any time — drafts show under the “Draft” filter and on your dashboard.</div><div class="grow"></div>${t > 0 ? btn('Back', { k: 'sec', a: `data-act="pfTab" data-i="${t - 1}"` }) : ''}${!last ? btn('Next', { a: `data-act="pfTab" data-i="${t + 1}"` }) : ''}</div></div>`);
 }
@@ -1046,7 +1080,7 @@ function propertyDetail(id) {
     `<div class="list" style="margin:0 calc(var(--pad)*-1) calc(var(--pad)*-1)"><div class="li"><div class="grow"><b>Listed</b><div class="sub">Added by ${esc(ME().name)}</div></div><span class="sub">${esc(dateTxt(p.created))}</span></div>${S.visits.filter((v) => v.prop === p.id).map((v) => `<a class="li" href="#/visits/${v.id}"><div class="grow"><b>Visit ${v.id}</b><div class="sub">${esc(prosById(v.cid).name)} · ${esc(v.when)}</div></div>${statusBadge(v.status)}</a>`).join('')}</div>`;
   const phs = f && f.photoList.length ? f.photoList.length + ' photo' + (f.photoList.length === 1 ? '' : 's') : 'Cover photo';
   return page(esc(p.title) + ` <span class="mono sub" style="font-size:14px">${p.id}</span>`, esc(p.loc) + ' · ' + fmtPrice(p), (canW('properties') ? btn('Share', { k: 'ghost', a: `data-act="openModal" data-m="share" data-ids="${p.id}"` }) + btn('Schedule visit', { k: 'ghost', a: `data-act="openModal" data-m="visit" data-ids="${p.id}"` }) + btn('Edit', { i: 'edit', a: `data-act="editProperty" data-id="${p.id}"` }) : ''),
-    `<div class="grid2"><div class="card">${tabsBar('propTab', [['overview', 'Overview'], ['matches', 'Matches ' + ms.length], ['activity', 'Activity']], tab)}${body}</div><div class="stack">${card(`<h2>Photos</h2>${coverBox('prop:' + p.id, 200, 0, 'Cover photo')}`)}${card(`<h2>Location</h2>${ph(150, 'Map preview')}${btn('Open in Maps', { k: 'sec', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}`)}</div></div>${card(docPanel('prop:' + p.id))}`);
+    `<div class="grid2"><div class="card">${tabsBar('propTab', [['overview', 'Overview'], ['matches', 'Matches ' + ms.length], ['activity', 'Activity']], tab)}${body}</div><div class="stack">${webPanel('property', p.id, canW('properties'), p.status, !!p.projectId)}${card(`<h2>Photos</h2>${coverBox('prop:' + p.id, 170, 0, 'Cover photo')}`)}${card(`<h2>Location</h2>${ph(150, 'Map preview')}${btn('Open in Maps', { k: 'sec', a: 'data-act="toast" data-t="Opens Google Maps in the live product"' })}`)}</div></div>${card(docPanel('prop:' + p.id))}`);
 }
 // Properties list screen with filters, import/export buttons.
 function propertiesView() {
@@ -1166,7 +1200,7 @@ function shareModal(m, wrap, cancel, D) {
   const to = D.shareTo || ''; const c = prosById(to); const noWa = c && c.waOk === false;
   return wrap('Share properties', `<div class="sub">${ids.length} selected: ${esc(ids.join(', ') || 'none')}</div>${fld('Send to', 'd.shareTo', { opts: [['', 'Choose a prospect…'], ...S.prospects.map((x) => [x.id, x.name])], rer: 1 })}${noWa ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>${esc(c.name)}’s number is flagged as <b>not on WhatsApp</b>. Send by email instead, or update the number.</div></div>` : ''}
     ${docs.length ? `<div class="card" style="background:var(--bg);gap:2px"><b>Include documents</b><div class="sub" style="font-size:12px;margin-bottom:4px">Only files marked Shareable can be sent. Owner ID and title papers never appear here.</div>${docs.map((x) => chk(S.d.shareSel[x.f.id] !== false, esc(x.f.name) + ' <span class="sub">· ' + x.pid + ' · ' + esc(x.f.cat) + '</span>', `data-act="shareDocTog" data-id="${x.f.id}"`)).join('')}</div>` : '<div class="sub" style="font-size:12px">No shareable documents on these properties yet.</div>'}
-    <div class="card" style="background:var(--bg)"><b>WhatsApp</b><div class="sub">A short message with links to the PDF and the documents (links work 7 days).</div>${btn('Share via WhatsApp', { i: 'chat', a: 'data-act="shareVia" data-v="WhatsApp"' + (noWa || S.mailBusy ? ' disabled' : '') })}</div><div class="card" style="background:var(--bg)"><b>Email</b><div class="sub">One email with a PDF of the selected properties and the chosen documents attached.</div>${btn('Share via Email', { i: 'mail', k: 'ghost', a: 'data-act="shareVia" data-v="Email"' + (S.mailBusy ? ' disabled' : '') })}</div>`, cancel);
+    <div class="card" style="background:var(--bg)"><b>WhatsApp</b><div class="sub">A short message with links to the PDF and the documents (links do not expire).</div>${btn('Share via WhatsApp', { i: 'chat', a: 'data-act="shareVia" data-v="WhatsApp"' + (noWa || S.mailBusy ? ' disabled' : '') })}</div><div class="card" style="background:var(--bg)"><b>Email</b><div class="sub">One email with a PDF of the selected properties and the chosen documents attached.</div>${btn('Share via Email', { i: 'mail', k: 'ghost', a: 'data-act="shareVia" data-v="Email"' + (S.mailBusy ? ' disabled' : '') })}</div>`, cancel);
 }
 
 
@@ -1192,7 +1226,8 @@ const REQ_EXTRA = ['areaType', 'lift', 'floor', 'furn', 'tenant', 'lease', 'poss
 // Text a requirement is searched on: its own fields plus the client's name, phone and email.
 const reqHay = (r) => { const c = prosById(r.cid) || {}; return hay(r, [c.name, c.phone, c.email, r.who].join(' ')); };
 // Budget text of a requirement.
-const reqBudget = (r) => (r.purpose === 'sale' ? fmtL(r.min) + ' – ' + fmtL(r.max) : fmtRent(r.min) + ' – ' + fmtRent(r.max));
+const reqBudget = (r) => { const f = r.purpose === 'sale' ? fmtL : fmtRent; const lo = Number(r.min) || 0; const hi = Number(r.max) || 0; const open = !hi || hi >= 1000000; if (!lo && open) return 'Any budget'; if (!lo) return 'Up to ' + f(hi); if (open) return 'From ' + f(lo); return f(lo) + ' – ' + f(hi); };
+const dashTxt = (v) => (v === undefined || v === null || v === '' ? '—' : String(v));
 const dash = (v) => (v === undefined || v === null || v === '' || v === '—' ? '—' : esc(String(v)));
 // Requirements list screen: one row per client, with how many requirements they have.
 function reqsView() {
@@ -1213,23 +1248,22 @@ function reqDetail(id) {
   const c = prosById(r.cid) || { id: '', name: '—', type: '', phone: '', email: '' }; const sib = S.reqs.filter((x) => x.cid === r.cid); const w = canW('requirements');
   const k = reqKind(r); const sale = r.purpose === 'sale'; const res = k === 'flat' || k === 'house';
   const tabs = sib.map((x) => `<a class="chip${x.id === r.id ? ' on' : ''}" href="#/requirements/${x.id}">${PURPOSE[x.purpose]} · ${esc(reqSpec(x) ? reqSpec(x) + ' ' : '')}${esc(x.type)}</a>`).join('');
-  const sec = (t, rows) => { rows = rows.filter((x) => x[1] !== '—' && x[1] !== undefined && x[1] !== ''); return rows.length ? card(`<h2>${t}</h2>${kv(rows)}`) : ''; };
-  const locs = (r.locs || []).length ? (r.locs || []).map((l) => badge(l)).join(' ') : 'Any area';
+  const cell = (x) => `<div><div class="sub" style="font-size:11px">${x[0]}</div><div style="font-weight:500;word-break:break-word">${x[1]}</div></div>`;
+  const sec = (t, rows, extra = '') => { rows = rows.filter((x) => x && x[0] && x[1] !== '—' && x[1] !== undefined && x[1] !== ''); return rows.length || extra ? card(`<h2>${t}</h2>${rows.length ? `<div class="kvg">${rows.map(cell).join('')}</div>` : ''}${extra}`) : ''; };
   const stCls = r.status === 'Active' ? 'ok' : r.status === 'On hold' ? 'warn' : '';
-  const sum = `${PURPOSE[r.purpose]} · ${reqSpec(r) ? reqSpec(r) + ' ' : ''}${r.type} · ${(r.locs || []).join(', ') || 'any area'} · ${reqBudget(r)}`;
-  return page(esc(c.name) + ' ' + badge(r.id), esc(c.type) + ' · ' + esc(maskNum(c.phone)), (c.id ? btn('Open prospect', { k: 'sec', href: '#/prospects/' + c.id }) : '') + btn('WhatsApp', { k: 'ghost', i: 'chat', a: 'data-act="toast" data-t="Opening WhatsApp…"' }) + (w ? btn('Add requirement', { i: 'plus', a: `data-act="newReq" data-cid="${r.cid}"` }) : ''),
-    `<div class="chips">${tabs}</div>
-    <div class="grid2"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--gap);align-items:start;min-width:0">
-    ${sec('Property', [['Purpose', PURPOSE[r.purpose]], ['Type', esc(r.type)], [k === 'comm' ? 'Commercial type' : res ? 'Bedrooms' : 'Type', k === 'comm' ? dash(r.csub) : res ? (Number(r.bhk) ? r.bhk + ' BHK' : 'Any') : '—'], ['Facing', dash(r.pface)]])}
-    ${sec('Budget and payment', [['Budget', reqBudget(r)], sale ? ['Financing', dash(r.fin)] : ['Lease length', dash(r.lease)], sale ? ['Possession', dash(r.possession)] : ['Tenant type', dash(r.tenant)], r.use ? ['Business use', dash(r.use)] : ['Furnishing', dash(r.furn)]])}
-    ${card(`<h2>Location</h2><div class="chips">${locs}</div>`)}
-    ${sec('Size and preferences', [['Area', dash(r.area)], ['Area measured as', dash(r.areaType)], ['Parking', dash(r.parking)], ['Lift required', dash(r.lift)], ['Floor', dash(r.floor)], ['Furnishing', dash(r.furn)], k === 'plot' ? ['Road width', r.road ? esc(r.road) + ' ft' : '—'] : ['', ''], k === 'plot' ? ['Boundary wall', dash(r.wall)] : ['', '']].filter((x) => x[0]))}
-    ${sec('Timeline', [['Needed', dash(r.timeline)], ['Added on', dash(r.created)]])}
-    </div><div class="stack">
-    ${card(`<h2>Status</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${badge(r.status, stCls)}${badge(r.pri || 'Normal', r.pri === 'Urgent' ? 'err' : r.pri === 'High' ? 'warn' : '')}</div>${kv([['Source', dash(r.src)], ['Handled by', dash(r.by)]])}${w ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`)}
-    ${card(`<h2>Summary</h2><div class="sub">${esc(sum)}</div>`)}
-    ${card(`<h2>Notes</h2><div class="sub">${esc(r.notes || 'No notes yet.')}</div>`)}
-    ${card(docPanel('req:' + r.id, { title: 'Attachments' }))}</div></div>`);
+  const lo = Number(r.min) || 0; const hi = Number(r.max) || 0; const fm = sale ? fmtL : fmtRent; const open = !hi || hi >= 1000000;
+  const key = (l, v) => `<div><div class="sub" style="font-size:11px">${l}</div><div class="reqkey">${v}</div></div>`;
+  const keyStrip = card(`<div class="keys">${key(sale ? 'Budget' : 'Rent budget', esc(reqBudget(r)))}${key('Looking for', esc((reqSpec(r) ? reqSpec(r) + ' ' : '') + r.type))}${key('Area', esc(dashTxt(r.area)))}${key('Needed', esc(dashTxt(r.timeline)))}</div>`);
+  const locs = (r.locs || []).length ? (r.locs || []).map((l) => badge(l)).join(' ') : '<span class="sub">Any area</span>';
+  const prop = sec('Property', [['Purpose', PURPOSE[r.purpose]], ['Type', esc(r.type)], res ? ['Bedrooms', Number(r.bhk) ? r.bhk + ' BHK' : 'Any'] : null, k === 'comm' ? ['Commercial type', dash(r.csub)] : null, k === 'comm' ? ['Business use', dash(r.use)] : null, ['Facing', dash(r.pface)]]);
+  const pay = sec('Budget and payment', [['Budget min', lo ? fm(lo) : '—'], ['Budget max', open ? '—' : fm(hi)], sale ? ['Financing', dash(r.fin)] : ['Lease length', dash(r.lease)], sale ? ['Possession', dash(r.possession)] : ['Tenant type', dash(r.tenant)]]);
+  const size = sec('Size and preferences', [['Area', dash(r.area)], ['Measured as', dash(r.areaType)], k === 'plot' ? null : ['Floor', dash(r.floor)], k === 'plot' ? null : ['Parking', dash(r.parking)], k === 'plot' ? null : ['Lift required', dash(r.lift)], k === 'plot' ? null : ['Furnishing', dash(r.furn)], k === 'plot' ? ['Road width', r.road ? esc(r.road) + ' ft' : '—'] : null, k === 'plot' ? ['Boundary wall', dash(r.wall)] : null]);
+  const locCard = card(`<h2>Locations and notes</h2><div class="chips">${locs}</div>${r.notes ? `<div style="border-top:1px solid var(--line2);padding-top:8px">${esc(r.notes)}</div>` : ''}`);
+  const status = card(`<h2>Status and handling</h2><div class="kvg">${[['Priority', esc(r.pri || 'Normal')], ['Source', dash(r.src)], ['Handled by', dash(r.by)], ['Added on', dash(r.created)]].filter((x) => x[1] !== '—').map(cell).join('')}</div>${w ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${btn('Edit', { k: 'ghost sm', a: `data-act="rowEdit" data-k="req" data-id="${r.id}"` })}${r.status === 'On hold' ? btn('Make active', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('On hold', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="On hold"` })}${r.status === 'Fulfilled' ? btn('Reopen', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Active"` }) : btn('Fulfilled', { k: 'ghost sm', a: `data-act="setReqStatus" data-id="${r.id}" data-v="Fulfilled"` })}${btn('Delete', { k: 'ghost sm', a: `data-act="rowDel" data-k="req" data-id="${r.id}"` })}</div>` : ''}`);
+  const sub = [esc(c.type), esc(maskNum(c.phone)), c.email ? esc(c.email) : ''].filter(Boolean).join(' · ');
+  return page(esc(c.name) + ' ' + badge(r.id) + ' ' + badge(r.status, stCls), sub, (c.id ? btn('Open prospect', { k: 'sec', href: '#/prospects/' + c.id }) : '') + btn('WhatsApp', { k: 'ghost', i: 'chat', a: 'data-act="toast" data-t="Opening WhatsApp…"' }) + (w ? btn('Add requirement', { i: 'plus', a: `data-act="newReq" data-cid="${r.cid}"` }) : ''),
+    `<div class="chips">${tabs}</div>${keyStrip}
+    <div class="reqgrid"><div class="stack">${prop}${pay}${size}${locCard}</div><div class="stack">${status}${card(docPanel('req:' + r.id, { title: 'Attachments' }))}</div></div>`);
 }
 
 
@@ -2516,6 +2550,25 @@ Object.assign(ACTS, {
   chargeRm(el) { S.d.project.charges.splice(Number(el.dataset.i), 1); render(); },
   // Remove a photo.
   photoRm(el) { const w = el.dataset.w, i = Number(el.dataset.i), x = S.d[w].photoList[i]; S.d[w].photoList.splice(i, 1); if (x && x.fid) { const sc = (w === 'project' ? 'proj:' : 'prop:') + '__draft'; S.files[sc] = filesOf(sc).filter((f) => f.id !== x.fid); } render(); },
+  // Send this project/property to the website (creates the page the first time, updates it afterwards).
+  async webPublish(el) {
+    const kind = el.dataset.kind, id = el.dataset.id, ref = kind + ':' + id; S.webLink = S.webLink || {}; S.webLink[ref] = { ...(S.webLink[ref] || {}), busy: true }; render();
+    try {
+      await ADAPTER.flushNow?.(S); // make sure the latest edits are on the server first
+      const r = await ADAPTER.api!('/website/' + kind + 's/' + encodeURIComponent(id) + '/publish', { method: 'POST' });
+      S.webLink[ref] = { configured: true, published: true, postId: r.postId, url: r.url, syncedAt: new Date().toISOString(), syncedBy: ME().name }; toast('Sent to the website');
+    } catch (e: any) { S.webLink[ref] = { ...S.webLink[ref], busy: false }; toast(e?.message || 'Could not publish to the website'); }
+    render();
+  },
+  // Take the listing off the website (it stays in the CRM and can be published again).
+  async webUnpublish(el) {
+    const kind = el.dataset.kind, id = el.dataset.id, ref = kind + ':' + id; S.webLink[ref] = { ...(S.webLink[ref] || {}), busy: true }; render();
+    try {
+      const r = await ADAPTER.api!('/website/' + kind + 's/' + encodeURIComponent(id) + '/unpublish', { method: 'POST' });
+      S.webLink[ref] = { ...S.webLink[ref], published: false, busy: false, postId: r.postId, url: r.url, syncedAt: new Date().toISOString(), syncedBy: ME().name }; toast('Taken off the website');
+    } catch (e: any) { S.webLink[ref] = { ...S.webLink[ref], busy: false }; toast(e?.message || 'Could not take it off the website'); }
+    render();
+  },
   // Remove an amenity from the form.
   amRmForm(el) { const P = S.d.project; P.amenities = P.amenities.filter((x) => x !== el.dataset.id); render(); },
   // Remove a custom amenity.
@@ -3696,7 +3749,7 @@ function sendModal(m: Rec, wrap: (...a: any[]) => string, cancel: string) {
   }
   if (m.step === 'confirm') {
     return wrap('Did you send it?', `<div class="note ok">${ico('chat', 18)}<div>WhatsApp should have opened for <b>${esc(t.name)}</b> with the message ready. Press <b>Send</b> there, then come back and confirm.</div></div>
-      <div class="sub" style="font-size:12px">The PDF and the documents are inside the message as links (valid for 7 days). We log this in ${esc(t.name)}’s timeline only after you confirm.</div>`,
+      <div class="sub" style="font-size:12px">The PDF and the documents are inside the message as links (links do not expire). We log this in ${esc(t.name)}’s timeline only after you confirm.</div>`,
     btn('Not yet', { k: 'sec', a: 'data-act="sendBack"' }) + btn('Copy message', { k: 'ghost', a: 'data-act="sendCopy"' }) + btn('Open again', { k: 'ghost', i: 'chat', a: 'data-act="sendOpen"' }) + btn('Yes, I sent it', { i: 'check', a: 'data-act="sendDone"' }), 560);
   }
   const hidden = !canA('seeNumbers') || t.num.includes('•');
@@ -3714,7 +3767,7 @@ function sendModal(m: Rec, wrap: (...a: any[]) => string, cancel: string) {
     ${hidden ? `<div class="note" style="background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)">${ico('info', 18)}<div>The number is hidden for your role. Reveal it from the client’s page or ask an admin before sending.</div></div>` : ''}
     <div class="fld"><span class="l">Properties to send (${picked.length} of ${ids.length})</span><div class="card" style="background:var(--bg);gap:2px">${props}</div></div>
     <div class="fld"><span class="l">Send by</span><div class="chips">${chip('WhatsApp', !em, 'data-act="setf" data-p="d.send.ch" data-v="wa"')}${chip('Email', em, canMail ? 'data-act="setf" data-p="d.send.ch" data-v="email"' : `data-act="toast" data-t="${esc(mailWhy)}"`)}</div>${!canMail ? `<small>${esc(mailWhy)}</small>` : ''}</div>
-    <div class="note ok">${ico('file', 18)}<div><b>One PDF of ${picked.length} propert${picked.length === 1 ? 'y' : 'ies'}</b>: price, size, amenities and why each one fits. ${em ? 'It is attached to the email together with the documents below.' : 'It goes as a link in the WhatsApp message (links work 7 days), together with the documents below.'}</div></div>
+    <div class="note ok">${ico('file', 18)}<div><b>One PDF of ${picked.length} propert${picked.length === 1 ? 'y' : 'ies'}</b>: price, size, amenities and why each one fits. ${em ? 'It is attached to the email together with the documents below.' : 'It goes as a link in the WhatsApp message (links do not expire), together with the documents below.'}</div></div>
     ${em ? fld('Subject', 'd.send.subject', { ph: subjDefault }) : ''}${fld('Short note (optional)', 'd.send.note', { rows: 2, ph: 'e.g. Happy to arrange a visit this weekend', hint: em ? 'Shown at the top of the email.' : 'Added to the WhatsApp message.' })}${em ? `<div class="sub" style="font-size:12px">Goes to ${esc(t.email)}. Replies come to ${esc(S.me)}.</div>` : ''}
     ${docs.length ? `<div class="card" style="background:var(--bg);gap:2px"><b>Documents to send with the PDF</b><div class="sub" style="font-size:12px;margin-bottom:4px">${em ? 'Attached to the email.' : 'Sent as links in the message.'} Only files marked Shareable are listed.</div>${docs.map((x) => chk(S.d.shareSel[x.f.id] !== false, esc(x.f.name) + ' <span class="sub">· ' + x.pid + '</span>', `data-act="shareDocTog" data-id="${x.f.id}"`)).join('')}</div>` : ''}
     ${IS_MOBILE_UA || em ? '' : `<div class="fld"><span class="l">Open with</span>${chipSet('d.send.via', [['app', 'WhatsApp app'], ['web', 'WhatsApp Web'], ['copy', 'Copy message only']], D.via)}<small>The app opens if WhatsApp Desktop is installed; WhatsApp Web asks for a QR scan the first time.</small></div>`}`,

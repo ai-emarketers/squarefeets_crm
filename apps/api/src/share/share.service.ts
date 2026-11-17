@@ -206,7 +206,7 @@ export class ShareService {
     lines.push(c.matched ? `${n === 1 ? 'Here is 1 property that matches' : `Here are ${n} properties that match`} what you asked for${c.spec ? ` (${c.spec})` : ''}.` : `${n === 1 ? 'Here is 1 property' : `Here are ${n} properties`} for you.`, '',
       '*Property details (PDF):*', pdfUrl);
     if (docs.length) { lines.push('', '*Documents:*'); docs.forEach((d) => lines.push(`${d.name}`, d.url)); }
-    lines.push('', `Links work for ${linkDays()} days. Would you like to see any of them? Reply here and I will set up a visit.`);
+    lines.push('', 'Would you like to see any of them? Reply here and I will set up a visit.');
     await this.audit.log(u.name, 'Prepared WhatsApp matches share', c.client, { client: c.clientId, properties: c.propIds, documents: c.docs.map((d) => d.id) });
     return { ok: true, message: lines.join('\n'), pdfUrl, docs, days: linkDays(), skipped: c.skipped };
   }

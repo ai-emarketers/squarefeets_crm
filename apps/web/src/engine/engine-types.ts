@@ -81,6 +81,8 @@ export interface EngineAdapter {
   upload?: (...args: any[]) => any;
   /** Open a stored document through the authenticated API. */
   openUrl?: (...args: any[]) => any;
+  /** Send pending edits and wait until the server has them. */
+  flushNow?: (S: EngineState) => Promise<void>;
   /** Sign out. */
   logout?: () => void;
   /** Direct API call (used by the Team and My account screens). */

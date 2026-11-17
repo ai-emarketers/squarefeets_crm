@@ -6,7 +6,7 @@ From **Matches → Send to client** (and the **Share** button on a property page
 | Channel | What the client gets |
 |---|---|
 | Email | The PDF and each document **attached**. Files over `MAIL_MAX_ATTACH_MB` in total go as download links in the email body. |
-| WhatsApp | A short message with a **link to the PDF** and **a link per document**. A `wa.me` link cannot carry files, so links are used. They stop working after `SHARE_LINK_DAYS` (default 7). The official WhatsApp Business API can attach files later. |
+| WhatsApp | A short message with a **link to the PDF** and **a link per document**. A `wa.me` link cannot carry files, so links are used. They do not expire by default; set `SHARE_LINK_DAYS` to a number to make new links expire after that many days. A link still stops working if the file is unshared or the sender is deactivated. The official WhatsApp Business API can attach files later. |
 
 ## Rules (enforced on the server, `apps/api/src/share/`)
 * Only documents marked **Shareable** on the chosen **properties** (`scope = prop:<id>`) can leave. Deal, KYC, owner ID and every other scope never can.
