@@ -469,3 +469,23 @@ textarea{border:1px solid var(--field);border-radius:var(--rs);padding:12px;back
 @media(min-width:768px){.kv>div{min-height:30px!important}}
 .kv>div{padding-top:5px!important;padding-bottom:5px!important}
 .tabs{margin-bottom:0}
+
+/* compact form controls */
+:root{--ctl:40px!important;--rs:8px}
+.fld{gap:3px}
+.fld>span.l{line-height:1.2}
+.inp input,.inp select{padding:0 10px}
+.inp .pre{padding-left:10px}.inp .suf{padding-right:10px}
+.inp.sel select{padding-right:28px}
+.inp.sel::after{right:11px}
+textarea{padding:8px 10px;min-height:64px}
+.pop button,.pop .opt{min-height:38px;padding:6px 12px;gap:10px}
+.chk{min-height:30px;gap:8px}
+@media(min-width:768px){
+ :root{--ctl:34px!important}
+ .row>*{flex:1 1 150px;min-width:150px}
+ .row.tight>*{flex-basis:130px;min-width:130px}
+ .inp.sel{min-width:110px}
+ .seg button{min-height:28px;padding:0 12px}
+ .seg{padding:2px;border-radius:10px}
+}
