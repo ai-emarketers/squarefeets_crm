@@ -294,7 +294,7 @@ S.alerts = [];
 S.viewLog = [{ who: 'Anil Sharma', what: 'Owner number', rec: 'RS003', at: '2026-09-26T10:42:00' }, { who: 'Anil Sharma', what: 'Prospect number', rec: 'Rohit Banerjee', at: '2026-09-27T16:05:00' }];
 S.exportReq = [];
 S.exportLog = [{ who: 'Anil Sharma', what: 'Properties', n: 9, at: '2026-09-26T11:20:00' }];
-S.cap = { text: '', stage: 0, parsed: null, checks: [], src: 'text', img: '', imgName: '', target: 'lead', listening: false };
+S.cap = { text: '', stage: 0, parsed: null, checks: [], src: 'text', img: '', imgName: '', target: 'lead', listening: false, items: [], idx: 0, busy: false, srcLabel: '', warn: [], dups: [], model: '' };
 S.exp = { kind: 'properties', from: '', to: '', min: '', max: '', source: 'all', status: 'all' };
 S.tab.rev = {};
 S.d.docCat = {};
@@ -1646,7 +1646,25 @@ function checkCapture(p) {
   p.name ? ok('Name found: ' + p.name) : bad('No name mentioned — add it before approving'); p.phone ? ok('Phone number found') : bad('No phone number mentioned — a lead needs one to be useful');
   p.loc ? ok('Area: ' + p.loc) : bad('Area not mentioned'); p.max ? ok('Budget understood: up to ' + p.max + (p.intent === 'buy' ? ' lakh' : ' thousand/month')) : bad('No budget mentioned');
   if (p.kind === 'Residential' && !p.bhk) bad('BHK not mentioned'); if (p.kind !== 'Residential' && !p.area) bad('Size not mentioned');
+  (S.cap.dups || []).forEach((d) => bad('Already in the CRM (' + (d.by === 'phone' ? 'same phone number' : 'same name') + '): ' + d.name + ' · ' + (d.kind === 'lead' ? 'lead ' : 'prospect ') + d.id + ' — check before saving a duplicate'));
+  (S.cap.warn || []).forEach((w) => bad(w));
   return c;
+}
+/* ---- AI capture: read a WhatsApp screenshot with the vision model (API: POST /api/capture/screenshot) ---- */
+// Show one found item in the preview. Edits stay on the item (parsed is the same object), so switching items keeps them.
+function capShow(i) { const C = S.cap; C.idx = i; C.parsed = C.items[i] || null; if (C.parsed) C.target = C.parsed.isProperty ? 'property' : 'lead'; }
+// Upload the screenshot, then fill the preview with every need or offer the AI found in it.
+async function readScreenshot(f: File) {
+  const C = S.cap; if (f.size > 8 * 1048576) { toast(f.name + ' is over 8 MB'); return; }
+  C.busy = true; C.imgName = f.name; C.items = []; C.parsed = null; C.warn = []; C.dups = []; render();
+  try {
+    const form = new FormData(); form.append('file', f);
+    const r = await ADAPTER.api!('/capture/screenshot', { form });
+    C.items = r.items || []; C.warn = r.warnings || []; C.dups = r.duplicates || []; C.text = r.transcript || ''; C.model = r.model || ''; C.srcLabel = 'WhatsApp';
+    if (C.items.length) { capShow(0); toast(C.items.length + (C.items.length === 1 ? ' lead' : ' leads') + ' found — check and approve'); }
+    else toast(C.warn[0] || 'No leads found in that screenshot.');
+  } catch (e: any) { toast(e?.message || 'Could not read the screenshot'); }
+  C.busy = false; render();
 }
 // Sample texts for the capture screen.
 const CAP_SAMPLES = ['Santosh Saraf is looking for 200 sq ft office in Sector V, budget 40 thousand per month, number 98300 12345', 'Meera Kapoor wants a 3 BHK to buy in Salt Lake, around 1.2 crore, 1450 sq ft', 'Owner Bimal Roy has a 2 BHK for rent in Ballygunge, 35 thousand, 1050 sq ft, call 9831012345'];
@@ -1655,7 +1673,7 @@ function captureView() {
   const C = S.cap; const sr = [['text', 'Type or paste'], ['voice', 'Voice note / call'], ['shot', 'WhatsApp screenshot']];
   const P = C.parsed;
   const input = C.src === 'voice' ? `<div class="card" style="background:var(--bg)"><div class="sub">Record a voice note, or upload a call recording. It is turned into text first, then understood. Browsers that support speech recognition transcribe live; otherwise use the sample.</div><div class="chips">${btn(C.listening ? 'Stop recording' : 'Record voice note', { i: 'phone', k: C.listening ? 'danger' : '', a: 'data-act="capVoice"' })}<label class="btn ghost" style="cursor:pointer">${ico('upload', 16)}Upload recording<input type="file" hidden data-capaudio="1" accept="audio/*"></label>${btn('Use a sample note', { k: 'sec', a: 'data-act="capSample" data-i="0"' })}</div>${C.listening ? '<div class="badge err">Listening… speak now</div>' : ''}</div>` :
-    C.src === 'shot' ? `<div class="card" style="background:var(--bg)"><div class="sub">Upload a screenshot of a WhatsApp chat. The text in it is read, then understood. (Prototype: sample text is filled in.)</div><label class="btn ghost" style="cursor:pointer;align-self:flex-start">${ico('upload', 16)}Upload screenshot<input type="file" hidden data-capshot="1" accept="image/*"></label>${C.imgName ? `<div class="sub">${ico('img', 16)} ${esc(C.imgName)}</div>` : ''}</div>` : '';
+    C.src === 'shot' ? `<div class="card" style="background:var(--bg)"><div class="sub">Upload a screenshot of a WhatsApp chat. The AI reads it and lists every property or requirement in it (one screenshot can hold several). You check each one before it is saved.</div><label class="btn ghost" style="cursor:pointer;align-self:flex-start">${ico('upload', 16)}${C.busy ? 'Reading…' : 'Upload screenshot'}<input type="file" hidden data-capshot="1" accept="image/png,image/jpeg,image/webp"></label>${C.imgName ? `<div class="sub">${ico('img', 16)} ${esc(C.imgName)}${C.busy ? ' — reading the chat…' : ''}</div>` : ''}${C.model ? `<div class="sub" style="font-size:12px">Read by ${esc(C.model)}. Check every field, especially numbers and amounts.</div>` : ''}</div>` : '';
   const target = [['lead', 'Lead'], ['prospect', 'Prospect + requirement'], ['property', 'Property (draft)']];
   return page('AI capture', 'Say it or paste it — the CRM fills the form. You approve before anything is saved.', '',
     `<div class="note">${ico('info', 18)}<div>AI capture is a paid add-on. Two AI steps run in order: one fills the fields, a second checks them. Everything lands in a preview for you to edit and approve.</div></div>
@@ -1663,10 +1681,12 @@ function captureView() {
       <div class="fld"><span class="l">Text</span><textarea id="f_cap_text" data-f="cap.text" rows="5" placeholder="e.g. Santosh Saraf looking for 200 sq ft office in Sector V, budget 40 thousand per month">${esc(C.text)}</textarea></div>
       <div class="chips"><span class="sub" style="font-size:12px">Try:</span>${CAP_SAMPLES.map((x, i) => `<button type="button" class="chip" data-act="capSample" data-i="${i}">${esc(x.slice(0, 34))}…</button>`).join('')}</div><div>${btn('Understand', { i: 'match', a: 'data-act="capRun"' })}</div>`)}</div>
     <div class="stack">${P ? card(`<div class="head"><h2>Preview — check and edit</h2><div class="grow"></div>${badge('Step 1 · filled', 'blue')}${badge('Step 2 · checked', 'ok')}</div>
+      ${C.items && C.items.length > 1 ? `<div class="fld"><span class="l">Found in the screenshot — ${C.items.length} left</span><div class="chips">${C.items.map((it, i) => chip((i + 1) + '. ' + (it.isProperty ? 'Has ' : 'Wants ') + (it.project || it.sub || it.kind), C.idx === i, `data-act="capItem" data-i="${i}"`)).join('')}</div></div>` : ''}
       <div class="fld"><span class="l">Save as</span>${chipSet('cap.target', target, C.target)}</div>
       <div class="row">${fld('Name', 'cap.parsed.name')}${fld('Phone', 'cap.parsed.phone', { pre: '+91' })}</div>
       <div class="row"><div class="fld"><span class="l">Interest</span>${chipSet('cap.parsed.intent', [['buy', 'Buy'], ['rent', 'Rent/Lease']], P.intent)}</div>${fld('Category', 'cap.parsed.kind', { opts: ['Residential', 'Commercial', 'Land'], rer: 1 })}</div>
       <div class="row">${P.kind === 'Residential' || !P.kind ? fld('BHK', 'cap.parsed.bhk') : ''}${fld('Area', 'cap.parsed.area', { suf: 'sq ft' })}${fld('Location', 'cap.parsed.loc')}</div>
+      ${P.project !== undefined ? `<div class="row">${fld('Project / building', 'cap.parsed.project')}${fld('Unit details', 'cap.parsed.unit', { hint: 'Tower, floor, flat number' })}</div>` : ''}
       <div class="row">${fld('Budget min', 'cap.parsed.min', { hint: P.intent === 'buy' ? 'lakh' : 'thousand / month' })}${fld('Budget max', 'cap.parsed.max', { hint: P.intent === 'buy' ? 'lakh' : 'thousand / month' })}</div>
       <div class="card" style="background:var(--bg);gap:4px"><b style="font-size:13px">Checker notes</b>${checkCapture(P).map((c) => `<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><span style="color:var(${c[0] ? '--ok' : '--warn'})">${c[0] ? '✓' : '!'}</span><span>${esc(c[1])}</span></div>`).join('')}</div>
       <div class="chips">${btn('Approve & save', { a: 'data-act="capApprove"' })}${btn('Discard', { k: 'sec', a: 'data-act="capDiscard"' })}</div>`) : card(`<h2>Preview</h2><div class="sub">The understood fields appear here. You can change anything before approving.</div>`)}</div></div>`);
@@ -2531,7 +2551,7 @@ Object.assign(ACTS, {
 });
 Object.assign(ACTS, {
   // Open the AI capture screen.
-  newCapture() { S.newMenuOpen = false; S.cap = { text: '', stage: 0, parsed: null, checks: [], src: 'text', img: '', imgName: '', target: 'lead', listening: false }; go('#/capture'); },
+  newCapture() { S.newMenuOpen = false; S.cap = { text: '', stage: 0, parsed: null, checks: [], src: 'text', img: '', imgName: '', target: 'lead', listening: false, items: [], idx: 0, busy: false, srcLabel: '', warn: [], dups: [], model: '' }; go('#/capture'); },
   // Run/request a data export.
   doExport() {
     const E = S.exp; const t = expRows(E.kind, E); if (!t.rows.length) { toast('Nothing matches those filters.'); return; }
@@ -2559,7 +2579,9 @@ Object.assign(ACTS, {
   // Parse the captured text.
   capRun() { if (!S.cap.text.trim()) { toast('Add some text, a voice note or a screenshot first.'); return; } S.cap.parsed = parseCapture(S.cap.text); S.cap.target = S.cap.parsed.isProperty ? 'property' : S.cap.parsed.name && !S.cap.parsed.phone ? 'lead' : 'lead'; render(); },
   // Discard the capture result.
-  capDiscard() { S.cap.parsed = null; S.cap.text = ''; render(); },
+  capDiscard() { const C = S.cap; if (C.items && C.items.length > 1) { C.items.splice(C.idx, 1); capShow(Math.min(C.idx, C.items.length - 1)); } else { C.parsed = null; C.items = []; C.text = ''; C.warn = []; C.dups = []; C.model = ''; C.srcLabel = ''; C.imgName = ''; } render(); },
+  // Show another item found in the screenshot.
+  capItem(el) { capShow(Number(el.dataset.i)); render(); },
   // Start voice dictation.
   capVoice() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -2571,16 +2593,16 @@ Object.assign(ACTS, {
   capApprove() {
     const p = S.cap.parsed; const tg = S.cap.target; const chkd = checkCapture(p);
     if (tg !== 'property' && !p.name.trim()) { fail({ 'cap.parsed.name': 'Add a name first.' }); return; }
-    if (tg === 'lead') { const bud = p.max ? (p.intent === 'buy' ? '₹' + (p.min ? p.min + '–' : '') + p.max + ' L' : '₹' + (p.min ? p.min + '–' : '') + p.max + 'k/mo') : '—'; S.leads.unshift({ id: 'l' + Date.now(), name: p.name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', source: 'AI capture', intent: p.intent, stage: 'Lead', sub: '', budget: bud, want: [p.bhk ? p.bhk + ' BHK' : '', p.kind !== 'Residential' ? p.kind.toLowerCase() : '', p.area ? p.area + ' sq ft' : '', p.loc].filter(Boolean).join(' · ') || p.note.slice(0, 60), basic: { locText: p.loc, min: Number(p.min) || 0, max: Number(p.max) || 0, bhk: Number(p.bhk) || 0 }, assigned: ME().name, tags: [], created: iso(today), act: [['System', 'Created by AI capture and approved by ' + ME().name, dateTxt(iso(today))], ['Note', p.note.slice(0, 160), dateTxt(iso(today))]] }); toast('Lead created from your note'); go('#/leads'); }
-    else if (tg === 'prospect') { const c = { id: 'c' + Date.now(), name: p.name, type: p.intent === 'buy' ? 'Buyer' : 'Tenant', nri: false, city: S.org.city, source: 'AI capture', assigned: ME().name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', waOk: true, email: '', lang: 'English', notes: p.note.slice(0, 120), created: iso(today) }; S.prospects.push(c); S.d.req = newReq(); Object.assign(S.d.req, { cid: c.id, purpose: p.intent === 'buy' ? 'sale' : 'rent', bhk: Number(p.bhk) || 0, locs: p.loc ? [p.loc] : [], min: p.min, max: p.max, amin: p.area, type: p.kind === 'Commercial' ? 'Commercial' : p.kind === 'Land' ? 'Plot' : 'Apartment / Flat' }); toast('Prospect created — review the requirement'); go('#/requirements/new'); }
-    else { const d = newProperty(); Object.assign(d, { purpose: p.intent === 'buy' ? 'sale' : 'rent', cat: p.kind, sub: SUBTYPES[p.kind][0], bhk: Number(p.bhk) || 3, sbu: p.area, carpet: p.area ? String(Math.round(Number(p.area) * 0.8)) : '', price: p.intent === 'buy' ? p.max : '', rent: p.intent === 'rent' && p.max ? String(Number(p.max) * 1000) : '' }); d.owner.name = p.name; d.owner.mobile = p.phone; d.addr.street = p.loc; S.d.property = d; S.d.propEditId = null; S.files['prop:__draft'] = []; S.tab.pf = 0; ACTS.saveProperty({ dataset: { draft: '1' } }); }
-    S.cap.parsed = null; S.cap.text = '';
+    if (tg === 'lead') { const bud = p.max ? (p.intent === 'buy' ? '₹' + (p.min ? p.min + '–' : '') + p.max + ' L' : '₹' + (p.min ? p.min + '–' : '') + p.max + 'k/mo') : '—'; S.leads.unshift({ id: 'l' + Date.now(), name: p.name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', source: S.cap.srcLabel || 'AI capture', intent: p.intent, stage: 'Lead', sub: '', budget: bud, want: [p.bhk ? p.bhk + ' BHK' : '', p.kind !== 'Residential' ? p.kind.toLowerCase() : '', p.area ? p.area + ' sq ft' : '', p.loc].filter(Boolean).join(' · ') || p.note.slice(0, 60), basic: { locText: p.loc, min: Number(p.min) || 0, max: Number(p.max) || 0, bhk: Number(p.bhk) || 0 }, assigned: ME().name, tags: [], created: iso(today), act: [['System', 'Created by AI capture and approved by ' + ME().name, dateTxt(iso(today))], ['Note', p.note.slice(0, 160), dateTxt(iso(today))]] }); toast('Lead created from your note'); go('#/leads'); }
+    else if (tg === 'prospect') { const c = { id: 'c' + Date.now(), name: p.name, type: p.intent === 'buy' ? 'Buyer' : 'Tenant', nri: false, city: S.org.city, source: S.cap.srcLabel || 'AI capture', assigned: ME().name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', waOk: true, email: '', lang: 'English', notes: p.note.slice(0, 120), created: iso(today) }; S.prospects.push(c); S.d.req = newReq(); Object.assign(S.d.req, { cid: c.id, purpose: p.intent === 'buy' ? 'sale' : 'rent', bhk: Number(p.bhk) || 0, locs: p.loc ? [p.loc] : [], min: p.min, max: p.max, amin: p.area, type: p.kind === 'Commercial' ? 'Commercial' : p.kind === 'Land' ? 'Plot' : 'Apartment / Flat' }); toast('Prospect created — review the requirement'); go('#/requirements/new'); }
+    else { const d = newProperty(); Object.assign(d, { purpose: p.intent === 'buy' ? 'sale' : 'rent', cat: p.kind, sub: SUBTYPES[p.kind][0], bhk: Number(p.bhk) || 3, sbu: p.area, carpet: p.area ? String(Math.round(Number(p.area) * 0.8)) : '', price: p.intent === 'buy' ? p.max : '', rent: p.intent === 'rent' && p.max ? String(Number(p.max) * 1000) : '' }); d.owner.name = p.name; d.owner.mobile = p.phone; d.addr.street = [p.unit, p.project, p.loc].filter(Boolean).join(', '); S.d.property = d; S.d.propEditId = null; S.files['prop:__draft'] = []; S.tab.pf = 0; ACTS.saveProperty({ dataset: { draft: '1' } }); }
+    const C = S.cap; if (C.items && C.items.length > 1) { C.items.splice(C.idx, 1); capShow(Math.min(C.idx, C.items.length - 1)); render(); } else { C.parsed = null; C.items = []; C.text = ''; C.warn = []; C.dups = []; C.model = ''; C.srcLabel = ''; C.imgName = ''; }
   }
 });
 // Change handler: file inputs (upload documents) and select-like controls.
 _doc.addEventListener('change', (e) => {
   const el = e.target; if (!el || el.type !== 'file' || !el.dataset) return;
-  if (el.dataset.capshot) { const f = (el.files || [])[0]; if (f) { S.cap.imgName = f.name; S.cap.text = 'Meera Kapoor wants a 3 BHK to buy in Salt Lake, around 1.2 crore, 1450 sq ft, number 98300 54321'; toast('Text read from the screenshot (sample for the prototype)'); } el.value = ''; }
+  if (el.dataset.capshot) { const f = (el.files || [])[0]; if (f) readScreenshot(f); el.value = ''; }
   if (el.dataset.capaudio) { const f = (el.files || [])[0]; if (f) { S.cap.text = CAP_SAMPLES[0]; toast('Recording transcribed (sample for the prototype)'); } el.value = ''; }
 });
 /* ---- v5: dynamic forms — fields follow the choices made */
