@@ -7,6 +7,7 @@
 //   CAPTURE_PER_USER_DAILY      default 100 screenshots per person per day
 // Requests ask OpenRouter not to use providers that store or train on prompts (data_collection: deny), because chats hold phone numbers.
 import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { askOpenRouter } from './openrouter';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/auth.decorators';
@@ -27,27 +28,8 @@ export class CaptureService {
 
   /** One vision call. Returns the parsed JSON (or null when unreadable) and what it cost. */
   private async ask(model: string, dataUrl: string): Promise<{ raw: RawCapture | null; cost: number | null }> {
-    let res: Response;
-    try {
-      res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'content-type': 'application/json', 'x-title': 'Squarefeets CRM' },
-        body: JSON.stringify({
-          model, temperature: 0, max_tokens: 2000, response_format: { type: 'json_object' }, provider: { data_collection: 'deny' },
-          messages: [{ role: 'user', content: [{ type: 'text', text: PROMPT }, { type: 'image_url', image_url: { url: dataUrl } }] }],
-        }),
-        signal: AbortSignal.timeout(90_000),
-      });
-    } catch (e: any) { throw new BadGatewayException('Could not reach the AI service: ' + (e?.message || 'network error')); }
-    const j: any = await res.json().catch(() => null);
-    if (!res.ok) {
-      const msg = j?.error?.message || res.statusText;
-      if (res.status === 401) throw new ServiceUnavailableException('The OpenRouter key was refused. Ask the admin to check it.');
-      if (res.status === 402) throw new ServiceUnavailableException('The OpenRouter account is out of credit. Ask the admin to add some.');
-      throw new BadGatewayException('The AI service refused the request (' + res.status + '): ' + msg);
-    }
-    const text = j?.choices?.[0]?.message?.content;
-    return { raw: extractJson(Array.isArray(text) ? text.map((p: any) => p?.text || '').join('') : String(text || '')), cost: typeof j?.usage?.cost === 'number' ? j.usage.cost : null };
+    const r = await askOpenRouter(model, [{ type: 'text', text: PROMPT }, { type: 'image_url', image_url: { url: dataUrl } }]);
+    return { raw: extractJson(r.text), cost: r.cost };
   }
 
   /** Existing leads or prospects that look like the same person: same phone number, or the same (possibly cut-off) name. */
