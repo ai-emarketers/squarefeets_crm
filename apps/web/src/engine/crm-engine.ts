@@ -1645,13 +1645,24 @@ function parseCapture(t) {
 }
 // Validate/de-duplicate a parsed capture.
 function checkCapture(p) {
-  const c = []; const ok = (t) => c.push([true, t]); const bad = (t) => c.push([false, t]);
-  p.name ? ok('Name found: ' + p.name) : bad('No name mentioned — add it before approving'); p.phone ? ok('Phone number found') : bad('No phone number mentioned — a lead needs one to be useful');
-  p.loc ? ok('Area: ' + p.loc) : bad('Area not mentioned'); p.max ? ok('Budget understood: up to ' + p.max + (p.intent === 'buy' ? ' lakh' : ' thousand/month')) : bad('No budget mentioned');
+  const c = []; const ok = (t) => c.push([true, t]); const bad = (t) => c.push([false, t]); const owner = !!p.isProperty; const unit = p.intent === 'buy' ? ' lakh' : ' thousand/month';
+  p.name ? ok('Name found: ' + p.name) : bad('No name mentioned — add it before approving');
+  p.phone ? ok('Phone number found') : bad(owner ? 'No phone number on the screenshot — add it if you have it' : 'No phone number mentioned — a lead needs one to be useful');
+  p.loc ? ok('Area: ' + p.loc) : bad('Area not mentioned');
+  if (owner) p.max ? ok((p.intent === 'buy' ? 'Asking price: ' : 'Asking rent: ') + p.max + unit) : bad(p.intent === 'buy' ? 'No asking price mentioned' : 'No asking rent mentioned');
+  else p.max ? ok('Budget understood: up to ' + p.max + unit) : bad('No budget mentioned');
   if (p.kind === 'Residential' && !p.bhk) bad('BHK not mentioned'); if (p.kind !== 'Residential' && !p.area) bad('Size not mentioned');
   (S.cap.dups || []).forEach((d) => bad('Already in the CRM (' + (d.by === 'phone' ? 'same phone number' : 'same name') + '): ' + d.name + ' · ' + (d.kind === 'lead' ? 'lead ' : 'prospect ') + d.id + ' — check before saving a duplicate'));
   (S.cap.warn || []).forEach((w) => bad(w));
   return c;
+}
+// The four things a sender can want, shown as plain words: [key, label, intent, hasProperty].
+const CAP_INTENTS = [['buy', 'Wants to buy', 'buy', false], ['rent', 'Wants to rent', 'rent', false], ['sell', 'Wants to sell', 'buy', true], ['rentout', 'Wants to rent out', 'rent', true]];
+const capKey = (p) => (p.isProperty ? (p.intent === 'rent' ? 'rentout' : 'sell') : p.intent === 'rent' ? 'rent' : 'buy');
+// Pick the CRM property sub-type that fits what the AI read (e.g. "Office space" -> "Office").
+function capSub(kind, sub) {
+  const list = SUBTYPES[kind] || SUBTYPES.Residential; const t = String(sub || '').toLowerCase();
+  return list.find((x) => t && (t.includes(x.toLowerCase().split(' ')[0]) || x.toLowerCase().includes(t.split(' ')[0]))) || list[0];
 }
 /* ---- AI capture: read a WhatsApp screenshot with the vision model (API: POST /api/capture/screenshot) ---- */
 // Show one found item in the preview. Edits stay on the item (parsed is the same object), so switching items keeps them.
@@ -1677,20 +1688,23 @@ function captureView() {
   const P = C.parsed;
   const input = C.src === 'voice' ? `<div class="card" style="background:var(--bg)"><div class="sub">Record a voice note, or upload a call recording. It is turned into text first, then understood. Browsers that support speech recognition transcribe live; otherwise use the sample.</div><div class="chips">${btn(C.listening ? 'Stop recording' : 'Record voice note', { i: 'phone', k: C.listening ? 'danger' : '', a: 'data-act="capVoice"' })}<label class="btn ghost" style="cursor:pointer">${ico('upload', 16)}Upload recording<input type="file" hidden data-capaudio="1" accept="audio/*"></label>${btn('Use a sample note', { k: 'sec', a: 'data-act="capSample" data-i="0"' })}</div>${C.listening ? '<div class="badge err">Listening… speak now</div>' : ''}</div>` :
     C.src === 'shot' ? `<div class="card" style="background:var(--bg)"><div class="sub">Upload a screenshot of a WhatsApp chat. The AI reads it and lists every property or requirement in it (one screenshot can hold several). You check each one before it is saved.</div><label class="btn ghost" style="cursor:pointer;align-self:flex-start">${ico('upload', 16)}${C.busy ? 'Reading…' : 'Upload screenshot'}<input type="file" hidden data-capshot="1" accept="image/png,image/jpeg,image/webp"></label>${C.imgName ? `<div class="sub">${ico('img', 16)} ${esc(C.imgName)}${C.busy ? ' — reading the chat…' : ''}</div>` : ''}${C.model ? `<div class="sub" style="font-size:12px">Read by ${esc(C.model)}. Check every field, especially numbers and amounts.</div>` : ''}</div>` : '';
-  const target = [['lead', 'Lead'], ['prospect', 'Prospect + requirement'], ['property', 'Property (draft)']];
+  const owner = !!(P && P.isProperty); const target = owner ? [['property', 'Property (draft)'], ['owner', 'Owner contact only']] : [['lead', 'Lead'], ['prospect', 'Prospect + requirement']];
+  if (P && !target.some((x) => x[0] === C.target)) C.target = target[0][0];
   return page('AI capture', 'Say it or paste it — the CRM fills the form. You approve before anything is saved.', '',
     `<div class="note">${ico('info', 18)}<div>AI capture is a paid add-on. Two AI steps run in order: one fills the fields, a second checks them. Everything lands in a preview for you to edit and approve.</div></div>
     <div class="grid2"><div class="stack">${card(`<div class="chips">${sr.map((x) => chip(x[1], C.src === x[0], `data-act="capSrc" data-v="${x[0]}"`)).join('')}</div>${input}
       <div class="fld"><span class="l">Text</span><textarea id="f_cap_text" data-f="cap.text" rows="5" placeholder="e.g. Santosh Saraf looking for 200 sq ft office in Sector V, budget 40 thousand per month">${esc(C.text)}</textarea></div>
       <div class="chips"><span class="sub" style="font-size:12px">Try:</span>${CAP_SAMPLES.map((x, i) => `<button type="button" class="chip" data-act="capSample" data-i="${i}">${esc(x.slice(0, 34))}…</button>`).join('')}</div><div>${btn('Understand', { i: 'match', a: 'data-act="capRun"' })}</div>`)}</div>
     <div class="stack">${P ? card(`<div class="head"><h2>Preview — check and edit</h2><div class="grow"></div>${badge('Step 1 · filled', 'blue')}${badge('Step 2 · checked', 'ok')}</div>
-      ${C.items && C.items.length > 1 ? `<div class="fld"><span class="l">Found in the screenshot — ${C.items.length} left</span><div class="chips">${C.items.map((it, i) => chip((i + 1) + '. ' + (it.isProperty ? 'Has ' : 'Wants ') + (it.project || it.sub || it.kind), C.idx === i, `data-act="capItem" data-i="${i}"`)).join('')}</div></div>` : ''}
+      ${C.items && C.items.length > 1 ? `<div class="fld"><span class="l">Found in the screenshot — ${C.items.length} left</span><div class="chips">${C.items.map((it, i) => chip((i + 1) + '. ' + (CAP_INTENTS.find((x) => x[0] === capKey(it)) || [])[1] + ' · ' + (it.project || it.sub || it.kind), C.idx === i, `data-act="capItem" data-i="${i}"`)).join('')}</div></div>` : ''}
       <div class="fld"><span class="l">Save as</span>${chipSet('cap.target', target, C.target)}</div>
       <div class="row">${fld('Name', 'cap.parsed.name')}${fld('Phone', 'cap.parsed.phone', { pre: '+91' })}</div>
-      <div class="row"><div class="fld"><span class="l">Interest</span>${chipSet('cap.parsed.intent', [['buy', 'Buy'], ['rent', 'Rent/Lease']], P.intent)}</div>${fld('Category', 'cap.parsed.kind', { opts: ['Residential', 'Commercial', 'Land'], rer: 1 })}</div>
+      <div class="fld"><span class="l">What does ${esc(P.name || 'the sender')} want?</span><div class="chips">${CAP_INTENTS.map((x) => chip(x[1], capKey(P) === x[0], `data-act="capIntent" data-v="${x[0]}"`)).join('')}</div>${P.evidence ? `<small>From the chat: “${esc(P.evidence)}”</small>` : ''}</div>
+      <div class="row">${fld('Category', 'cap.parsed.kind', { opts: ['Residential', 'Commercial', 'Land'], rer: 1 })}${fld('Property type', 'cap.parsed.sub', { hint: 'e.g. Office space, Flat' })}</div>
       <div class="row">${P.kind === 'Residential' || !P.kind ? fld('BHK', 'cap.parsed.bhk') : ''}${fld('Area', 'cap.parsed.area', { suf: 'sq ft' })}${fld('Location', 'cap.parsed.loc')}</div>
       ${P.project !== undefined ? `<div class="row">${fld('Project / building', 'cap.parsed.project')}${fld('Unit details', 'cap.parsed.unit', { hint: 'Tower, floor, flat number' })}</div>` : ''}
-      <div class="row">${fld('Budget min', 'cap.parsed.min', { hint: P.intent === 'buy' ? 'lakh' : 'thousand / month' })}${fld('Budget max', 'cap.parsed.max', { hint: P.intent === 'buy' ? 'lakh' : 'thousand / month' })}</div>
+      <div class="row">${owner ? '' : fld('Budget min', 'cap.parsed.min', { hint: P.intent === 'buy' ? 'lakh' : 'thousand / month' })}${fld(owner ? (P.intent === 'buy' ? 'Asking price' : 'Asking rent') : 'Budget max', 'cap.parsed.max', { hint: P.intent === 'buy' ? 'lakh' : 'thousand / month' })}</div>
+      ${P.note ? fld('Notes from the chat', 'cap.parsed.note', { rows: 2 }) : ''}
       <div class="card" style="background:var(--bg);gap:4px"><b style="font-size:13px">Checker notes</b>${checkCapture(P).map((c) => `<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><span style="color:var(${c[0] ? '--ok' : '--warn'})">${c[0] ? '✓' : '!'}</span><span>${esc(c[1])}</span></div>`).join('')}</div>
       <div class="chips">${btn('Approve & save', { a: 'data-act="capApprove"' })}${btn('Discard', { k: 'sec', a: 'data-act="capDiscard"' })}</div>`) : card(`<h2>Preview</h2><div class="sub">The understood fields appear here. You can change anything before approving.</div>`)}</div></div>`);
 }
@@ -2021,7 +2035,7 @@ const ACTS: Record<string, ActHandler> = {
     if (draft && !o.id) o.id = 'DR' + (S.props.filter((p) => p.id.startsWith('DR')).length + 1);
     if (eid) { const i = S.props.findIndex((p) => p.id === eid); S.props[i] = o; } else S.props.push(o);
     if (eid && eid !== o.id) delete S.files['prop:' + eid]; S.files['prop:' + o.id] = S.files['prop:__draft'] || []; S.files['prop:__draft'] = [];
-    S.d.propEditId = null; S.toast = draft ? 'Draft saved' : 'Property saved · ID ' + o.id; go('#/properties/' + o.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600); },
+    S.d.propEditId = null; S.toast = draft ? 'Draft saved' : 'Property saved · ID ' + o.id; if (el && el.dataset && el.dataset.stay) render(); else go('#/properties/' + o.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600); },
   /* leads & prospects */
   // Change a lead's stage.
   leadStage(el) { const l = S.leads.find((x) => x.id === el.dataset.id); l.stage = el.dataset.v; l.sub = ''; l.act.unshift(['System', 'Stage changed to ' + l.stage, 'Just now']); render(); },
@@ -2478,7 +2492,7 @@ Object.assign(ACTS, {
     if (eid) { const i = S.props.findIndex((p) => p.id === eid); S.props[i] = o; } else S.props.push(o);
     if (!draft && o.status === 'Available' && (!old || old.status === 'Draft')) findAlerts(o);
     if (eid && eid !== o.id) delete S.files['prop:' + eid]; S.files['prop:' + o.id] = S.files['prop:__draft'] || []; S.files['prop:__draft'] = [];
-    S.d.propEditId = null; S.toast = draft ? 'Draft saved — find it under Properties → Draft' : 'Property saved · ID ' + o.id; go('#/properties/' + o.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600);
+    S.d.propEditId = null; S.toast = draft ? 'Draft saved — find it under Properties → Draft' : 'Property saved · ID ' + o.id; if (el && el.dataset && el.dataset.stay) render(); else go('#/properties/' + o.id); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(); }, 2600);
   },
   /* numbers */
   // Ask for permission to reveal a number.
@@ -2583,6 +2597,8 @@ Object.assign(ACTS, {
   capRun() { if (!S.cap.text.trim()) { toast('Add some text, a voice note or a screenshot first.'); return; } S.cap.parsed = parseCapture(S.cap.text); S.cap.target = S.cap.parsed.isProperty ? 'property' : S.cap.parsed.name && !S.cap.parsed.phone ? 'lead' : 'lead'; render(); },
   // Discard the capture result.
   capDiscard() { const C = S.cap; if (C.items && C.items.length > 1) { C.items.splice(C.idx, 1); capShow(Math.min(C.idx, C.items.length - 1)); } else { C.parsed = null; C.items = []; C.text = ''; C.warn = []; C.dups = []; C.model = ''; C.srcLabel = ''; C.imgName = ''; } render(); },
+  // Change what the sender wants. Wanting to sell or rent out means they HAVE a property, so it is saved as a property, not a lead.
+  capIntent(el) { const k = CAP_INTENTS.find((x) => x[0] === el.dataset.v); if (!k) return; const P = S.cap.parsed; P.intent = k[2]; P.isProperty = k[3]; S.cap.target = k[3] ? 'property' : 'lead'; render(); },
   // Show another item found in the screenshot.
   capItem(el) { capShow(Number(el.dataset.i)); render(); },
   // Start voice dictation.
@@ -2598,7 +2614,18 @@ Object.assign(ACTS, {
     if (tg !== 'property' && !p.name.trim()) { fail({ 'cap.parsed.name': 'Add a name first.' }); return; }
     if (tg === 'lead') { const bud = p.max ? (p.intent === 'buy' ? '₹' + (p.min ? p.min + '–' : '') + p.max + ' L' : '₹' + (p.min ? p.min + '–' : '') + p.max + 'k/mo') : '—'; S.leads.unshift({ id: 'l' + Date.now(), name: p.name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', source: S.cap.srcLabel || 'AI capture', intent: p.intent, stage: 'Lead', sub: '', budget: bud, want: [p.bhk ? p.bhk + ' BHK' : '', p.kind !== 'Residential' ? p.kind.toLowerCase() : '', p.area ? p.area + ' sq ft' : '', p.loc].filter(Boolean).join(' · ') || p.note.slice(0, 60), basic: { locText: p.loc, min: Number(p.min) || 0, max: Number(p.max) || 0, bhk: Number(p.bhk) || 0 }, assigned: ME().name, tags: [], created: iso(today), act: [['System', 'Created by AI capture and approved by ' + ME().name, dateTxt(iso(today))], ['Note', p.note.slice(0, 160), dateTxt(iso(today))]] }); toast('Lead created from your note'); go('#/leads'); }
     else if (tg === 'prospect') { const c = { id: 'c' + Date.now(), name: p.name, type: p.intent === 'buy' ? 'Buyer' : 'Tenant', nri: false, city: S.org.city, source: S.cap.srcLabel || 'AI capture', assigned: ME().name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', waOk: true, email: '', lang: 'English', notes: p.note.slice(0, 120), created: iso(today) }; S.prospects.push(c); S.d.req = newReq(); Object.assign(S.d.req, { cid: c.id, purpose: p.intent === 'buy' ? 'sale' : 'rent', bhk: Number(p.bhk) || 0, locs: p.loc ? [p.loc] : [], min: p.min, max: p.max, amin: p.area, type: p.kind === 'Commercial' ? 'Commercial' : p.kind === 'Land' ? 'Plot' : 'Apartment / Flat' }); toast('Prospect created — review the requirement'); go('#/requirements/new'); }
-    else { const d = newProperty(); Object.assign(d, { purpose: p.intent === 'buy' ? 'sale' : 'rent', cat: p.kind, sub: SUBTYPES[p.kind][0], bhk: Number(p.bhk) || 3, sbu: p.area, carpet: p.area ? String(Math.round(Number(p.area) * 0.8)) : '', price: p.intent === 'buy' ? p.max : '', rent: p.intent === 'rent' && p.max ? String(Number(p.max) * 1000) : '' }); d.owner.name = p.name; d.owner.mobile = p.phone; d.addr.street = [p.unit, p.project, p.loc].filter(Boolean).join(', '); S.d.property = d; S.d.propEditId = null; S.files['prop:__draft'] = []; S.tab.pf = 0; ACTS.saveProperty({ dataset: { draft: '1' } }); }
+    else if (tg === 'owner') {
+      const same = S.prospects.find((x) => x.name.trim().toLowerCase() === p.name.trim().toLowerCase());
+      if (same) toast(p.name + ' is already a contact (' + same.id + ').');
+      else { S.prospects.push({ id: 'c' + Date.now(), name: p.name, type: p.intent === 'rent' ? 'Landlord' : 'Owner', nri: false, city: S.org.city, source: S.cap.srcLabel || 'AI capture', assigned: ME().name, phone: p.phone ? '+91 ' + p.phone : '+91 —', waSame: true, wa: '', waOk: true, email: '', lang: 'English', notes: [p.project, p.unit, p.note].filter(Boolean).join(' · ').slice(0, 160), created: iso(today) }); toast('Owner contact saved'); }
+    }
+    else {
+      // A property someone has to sell or rent out: save it as a draft listing and stay here, so the next one in the screenshot can follow.
+      const d = newProperty(); const pj = (p.project || '').trim().toLowerCase(); const proj = pj.length >= 4 ? S.projects.find((x) => x.name && (pj.includes(x.name.toLowerCase()) || x.name.toLowerCase().includes(pj))) : null;
+      Object.assign(d, { purpose: p.intent === 'buy' ? 'sale' : 'rent', cat: p.kind, sub: capSub(p.kind, p.sub), bhk: Number(p.bhk) || 3, sbu: p.area, carpet: p.area ? String(Math.round(Number(p.area) * 0.8)) : '', price: p.intent === 'buy' ? p.max : '', rent: p.intent === 'rent' && p.max ? String(Number(p.max) * 1000) : '', projectId: proj ? proj.id : null });
+      d.owner.name = p.name; d.owner.mobile = p.phone; d.addr.street = [p.unit, p.project, p.loc].filter(Boolean).join(', ');
+      S.d.property = d; S.d.propEditId = null; S.files['prop:__draft'] = []; S.tab.pf = 0; ACTS.saveProperty({ dataset: { draft: '1', stay: '1' } }); toast('Draft property saved' + (proj ? ' under ' + proj.name : '') + ' — find it under Properties → Draft');
+    }
     const C = S.cap; if (C.items && C.items.length > 1) { C.items.splice(C.idx, 1); capShow(Math.min(C.idx, C.items.length - 1)); render(); } else { C.parsed = null; C.items = []; C.text = ''; C.warn = []; C.dups = []; C.model = ''; C.srcLabel = ''; C.imgName = ''; }
   }
 });
