@@ -516,3 +516,16 @@ textarea{min-height:56px;padding:6px 8px}
  .search{height:32px}
  .tbl .btn{min-height:26px}
 }
+
+/* document upload bars: one slim line */
+.docbar{align-items:center;gap:6px}
+.docbar>.fld{flex-direction:row;align-items:center;gap:8px}
+.docbar>.fld>span.l{white-space:nowrap;font-size:12px}
+.docbar .inp,[data-drop] .inp{height:28px}
+.docbar .inp select,[data-drop] .inp select{font-size:13px!important}
+[data-drop] .btn,[data-drop] label.btn{min-height:28px;padding:0 10px;font-size:13px}
+[data-drop]{gap:6px!important}
+.docctl .inp{height:28px}
+@media(max-width:560px){.docbar>.fld{flex-direction:column;align-items:stretch;gap:2px}}
+[data-drop] .badge{font-size:11px;padding:2px 8px;min-height:0;height:auto}
+[data-drop] .chips{gap:4px!important}
