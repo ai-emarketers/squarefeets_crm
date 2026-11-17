@@ -82,7 +82,7 @@ export class WebsiteService {
     const amenityMaster = await this.prisma.amenity.findMany();
     const units = kind === 'project' ? await this.prisma.property.findMany({ where: { projectId: id } }) : [];
     const ctx: MapContext = {
-      web: (((record.data as any) || {}).web || {}) as WebContent, postId: link?.postId || undefined, publish: true,
+      web: ((((record.data as any) || {}).web || (((record.data as any) || {}).form || {}).web || {}) as WebContent), postId: link?.postId || undefined, publish: true,
       amenityMaster: amenityMaster.map((a: any) => ({ id: a.id, label: a.label })), photos, floorPlanMedia: {}, brochureId, units,
     };
     const payload: ListingPayload = kind === 'project' ? mapProject(record, ctx) : mapProperty(record, ctx);

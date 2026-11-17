@@ -5,9 +5,10 @@
 export interface WebContent {
   priceLabel?: string; priceNote?: string; featured?: boolean; description?: string; summary?: string;
   floors?: string; bestFor?: string; sfScore?: string | number;
-  strengths?: string[]; considerations?: string[];
-  nearby?: { name: string; detail: string }[];
-  reviews?: { name: string; rating: number; text: string }[];
+  // The CRM form stores these as text typed one per line; arrays are accepted too.
+  strengths?: string | string[]; considerations?: string | string[];
+  nearby?: string | { name: string; detail: string }[];       // text: "Place | distance" per line
+  reviews?: string | { name: string; rating: number; text: string }[]; // text: "Name | stars | review" per line
   virtualTour?: string;
 }
 
@@ -48,7 +49,20 @@ export function fmtMoney(rupees: number): string {
 }
 
 const clean = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
-const lines = (a?: string[]) => (a || []).map(clean).filter(Boolean);
+const lines = (a?: string | string[]) => (Array.isArray(a) ? a : String(a ?? '').split('\n')).map(clean).filter(Boolean);
+const parts = (line: string) => line.split('|').map((x) => x.trim());
+
+/** Nearby places from text lines ("Place | distance") or an array. */
+export function parseNearby(v?: WebContent['nearby']): { name: string; detail: string }[] {
+  if (Array.isArray(v)) return v.map((n) => ({ name: clean(n.name), detail: clean(n.detail) })).filter((n) => n.name);
+  return lines(v as string).map((l) => { const [name, ...rest] = parts(l); return { name, detail: rest.join(' | ') }; }).filter((n) => n.name);
+}
+/** Client reviews from text lines ("Name | stars | review") or an array. Stars are limited to 1-5. */
+export function parseReviews(v?: WebContent['reviews']): { name: string; rating: number; text: string }[] {
+  const stars = (x: any) => Math.min(5, Math.max(1, Math.round(parseFloat(String(x))) || 5));
+  if (Array.isArray(v)) return v.map((r) => ({ name: clean(r.name), rating: stars(r.rating), text: clean(r.text) })).filter((r) => r.text);
+  return lines(v as string).map((l) => { const [name, rating, ...text] = parts(l); return { name, rating: stars(rating), text: text.join(' | ') }; }).filter((r) => r.text);
+}
 const num = (v: any) => { const n = parseFloat(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
 
 /** Escapes text and turns blank-line separated paragraphs into <p> tags (the description is plain text in the CRM). */
@@ -118,7 +132,7 @@ export function mapProject(p: any, c: MapContext): ListingPayload {
       label: clean(l.cfg), variant: clean(l.name), area: clean(l.area), bed: String(parseInt(l.cfg, 10) || ''), bath: clean(l.baths), balc: '',
       price: bhkPrice(l.cfg), psf: '', note: '',
     })),
-    nearby: (c.web.nearby || []).filter((n) => clean(n.name)), reviews: (c.web.reviews || []).filter((r) => clean(r.text)),
+    nearby: parseNearby(c.web.nearby), reviews: parseReviews(c.web.reviews),
     floorPlans: layouts.map((l) => ({ label: clean(l.cfg), variant: clean(l.name), image: c.floorPlanMedia[clean(l.cfg) + '|' + clean(l.name)] || 0 })).filter((f) => f.image),
     photos: c.photos, brochureId: c.brochureId,
   });
@@ -133,7 +147,8 @@ function withLists(meta: Record<string, string>, web: WebContent, out: ListingPa
 
 /** CRM standalone Property (no projectId) -> website listing. */
 export function mapProperty(p: any, c: MapContext): ListingPayload {
-  const d = p.data || {}; const addr = d.addr || {}; const place = d.place || {}; const sale = p.purpose === 'sale';
+  // The property form keeps most details under data.form; top-level keys win.
+  const raw = p.data || {}; const d = { ...(raw.form || {}), ...raw }; const addr = d.addr || {}; const place = d.place || {}; const sale = p.purpose === 'sale';
   const price = sale ? Math.round((p.quotedL || p.priceL || 0) * 1e5) : Math.round((p.rentK || 0) * 1e3);
   const area = d.sbu || p.area || 0;
   const meta: Record<string, string> = {
@@ -153,7 +168,7 @@ export function mapProperty(p: any, c: MapContext): ListingPayload {
     locality: clean(p.loc), meta,
     amenities: Array.from(new Set(lines(d.features))),
     configurations: [{ label: p.bhk ? `${p.bhk} BHK` : clean(p.sub), variant: '', area: area ? String(Math.round(num(area))) : '', bed: p.bhk ? String(p.bhk) : '', bath: clean(d.baths), balc: clean(d.balconies), price: fmtMoney(price), psf: '', note: '' }],
-    nearby: (c.web.nearby || []).filter((n) => clean(n.name)), reviews: (c.web.reviews || []).filter((r) => clean(r.text)),
+    nearby: parseNearby(c.web.nearby), reviews: parseReviews(c.web.reviews),
     floorPlans: [], photos: c.photos, brochureId: c.brochureId,
   });
 }

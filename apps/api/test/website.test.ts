@@ -1,6 +1,6 @@
 // Tests for the CRM -> website listing mapper (pure functions, no database). Run: npm run test:website (from apps/api)
 import * as assert from 'assert';
-import { fmtMoney, mapProject, mapProperty, MapContext, parseMoney, toHtml, websiteType } from '../src/website/listing.mapper';
+import { fmtMoney, mapProject, mapProperty, MapContext, parseMoney, parseNearby, parseReviews, toHtml, websiteType } from '../src/website/listing.mapper';
 
 const ctx = (over: Partial<MapContext> = {}): MapContext => ({ web: {}, publish: true, amenityMaster: [{ id: 'gym', label: 'Gym' }, { id: 'garden', label: 'Garden' }], photos: [], floorPlanMedia: {}, ...over });
 
@@ -74,5 +74,16 @@ assert.deepStrictEqual(pr.amenities, ['Lift', 'Gym']);
 const rent = mapProperty({ ...prop, purpose: 'rent', rentK: 55, priceL: null, quotedL: null }, ctx());
 assert.strictEqual(rent.listing, 'for-rent');
 assert.strictEqual(rent.meta.price, '55000');
+
+// ---- text-typed website fields (how the CRM form stores them)
+assert.deepStrictEqual(parseNearby('Phoolbagan Metro | 800 m · 3 min drive\n\nCity Centre 2'), [{ name: 'Phoolbagan Metro', detail: '800 m · 3 min drive' }, { name: 'City Centre 2', detail: '' }]);
+assert.deepStrictEqual(parseReviews('Ravi | 5 | Smooth process\nAsha | 9 | Helpful\nNo text |'), [{ name: 'Ravi', rating: 5, text: 'Smooth process' }, { name: 'Asha', rating: 5, text: 'Helpful' }]);
+const typed = mapProject(project, ctx({ web: { strengths: 'Metro nearby\nGood school belt', nearby: 'Metro | 800 m' } }));
+assert.strictEqual(typed.meta.strengths, 'Metro nearby\nGood school belt');
+assert.deepStrictEqual(typed.nearby, [{ name: 'Metro', detail: '800 m' }]);
+// property details kept under data.form are used
+const viaForm = mapProperty({ ...prop, data: { form: { baths: '2', features: ['Lift'], addr: { street: 'Park St' } } } }, ctx());
+assert.strictEqual(viaForm.meta.baths, '2');
+assert.deepStrictEqual(viaForm.amenities, ['Lift']);
 
 console.log('website mapper tests passed');
